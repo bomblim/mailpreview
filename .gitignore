@@ -1,0 +1,11 @@
+# 빌드 산출물 (build.sh / build.cmd 가 생성)
+dist/
+*.exe
+mp-dev
+node_modules/
+static/vendor/
+app.ico
+*.syso
+package-lock.json
+go.local.mod
+go.local.sum

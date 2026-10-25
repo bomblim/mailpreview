@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MailPreview</title>
+<link rel="stylesheet" href="vendor/codemirror/codemirror.css">
+<link rel="stylesheet" href="vendor/codemirror/material-darker.css">
+<link rel="stylesheet" href="vendor/codemirror/dialog.css">
+<style>
+  :root{
+    --bg:#f4f5f7; --panel:#ffffff; --line:#dfe2e7; --text:#1d2330; --muted:#6a7280;
+    --accent:#2b4fd8; --accent-weak:#e8edff; --ol:#0f6cbd; --wm:#c5221f;
+    --err:#d93025; --warn:#b26a00; --info:#3367d6; --code:#212121;
+    --c1:38%; --c2:31%;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.4 "Segoe UI","Malgun Gothic",system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+  button,select,input{font:inherit;color:inherit}
+
+  /* ---------- toolbar ---------- */
+  .bar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#1b1f27;color:#e6e9ef;flex-wrap:wrap;min-height:44px}
+  .brand{font-weight:700;letter-spacing:.2px;margin-right:8px;display:flex;align-items:center;gap:7px}
+  .brand i{width:18px;height:18px;border-radius:4px;background:linear-gradient(135deg,#0f6cbd 50%,#c5221f 50%);display:inline-block}
+  .sep{width:1px;height:22px;background:#3a404c;margin:0 4px}
+  .bar button,.bar select{background:#2a303b;border:1px solid #3a404c;border-radius:6px;padding:4px 10px;height:30px;cursor:pointer;color:#e6e9ef}
+  .bar button:hover,.bar select:hover{background:#343b48}
+  .bar button.primary{background:var(--ol);border-color:var(--ol)}
+  .bar button.primary:hover{background:#115ea3}
+  .bar label{display:flex;align-items:center;gap:5px;color:#b7bdc8}
+  .bar .grow{flex:1}
+  .seg{display:inline-flex;border:1px solid #3a404c;border-radius:6px;overflow:hidden}
+  .seg button{border:0;border-radius:0;background:#2a303b}
+  .seg button.on{background:#4a5263;color:#fff}
+  .file-name{color:#9aa3b2;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ---------- panes ---------- */
+  main{flex:1;display:grid;grid-template-columns:var(--c1) 5px var(--c2) 5px 1fr;min-height:0}
+  .pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--panel)}
+  .split{background:var(--line);cursor:col-resize}
+  .split:hover,.split.drag{background:var(--accent)}
+  .ph{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border-bottom:1px solid var(--line);background:#fafbfc;flex:none}
+  .ph b{font-weight:600}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .ph .meta{margin-left:auto;color:var(--muted);font-size:12px;display:flex;gap:8px;align-items:center;white-space:nowrap;overflow:hidden}
+  .chip{padding:1px 7px;border-radius:10px;background:#eef0f3;color:#4b5363;font-size:11px}
+  .chip.ok{background:#e6f4ea;color:#1e7e34}.chip.bad{background:#fce8e6;color:var(--err)}.chip.busy{background:#fff4e0;color:var(--warn)}
+
+  /* code */
+  .code-pane{background:var(--code)}
+  .code-pane .ph{background:#2a2a2a;border-color:#333;color:#ddd}
+  .code-pane .ph .meta{color:#999}
+  #editorWrap{flex:1;min-height:0;position:relative}
+  .CodeMirror{position:absolute;inset:0;height:auto;font:13px/1.55 Consolas,"D2Coding","Cascadia Mono",monospace}
+  #fallback{position:absolute;inset:0;width:100%;height:100%;border:0;resize:none;background:var(--code);color:#eee;padding:10px;font:13px/1.55 Consolas,monospace;outline:none}
+  .cm-lint-line{background:rgba(255,170,0,.12)}
+  .lint{flex:none;max-height:34%;display:flex;flex-direction:column;border-top:1px solid #333;background:#1a1a1a;color:#ddd}
+  .lint.collapsed .lint-list{display:none}
+  .lint-h{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;user-select:none;font-size:12px}
+  .lint-h .tabs{display:flex;gap:4px}
+  .lint-h .tabs span{padding:1px 8px;border-radius:10px;background:#2b2b2b;color:#bbb}
+  .lint-h .tabs span.on{background:#3d4556;color:#fff}
+  .lint-h .caret{margin-left:auto;color:#888}
+  .lint-list{overflow:auto;padding:0 0 6px}
+  .li{display:flex;gap:8px;padding:4px 10px;cursor:pointer;font-size:12px;align-items:baseline}
+  .li:hover{background:#262626}
+  .li .sev{flex:none;width:44px;font-size:10px;font-weight:700;text-transform:uppercase;border-radius:3px;text-align:center;padding:1px 0}
+  .sev.error{background:#5c1d1a;color:#ff8a80}.sev.warn{background:#4d3a10;color:#ffcc66}.sev.info{background:#1d2f52;color:#8ab4f8}
+  .li .ln{flex:none;color:#888;width:46px;font-family:Consolas,monospace}
+  .li .who{flex:none;color:#9aa;font-size:11px}
+  .li .msg{color:#ddd}
+  .li .msg em{color:#8ab4f8;font-style:normal}
+
+  /* outlook */
+  .ol-pane .ph{border-top:3px solid var(--ol)}
+  .wm-pane .ph{border-top:3px solid var(--wm)}
+  #olView{flex:1;overflow:auto;background:#e9ebee;position:relative}
+  #olChrome{margin:12px;background:#fff;border:1px solid #cfd3d9;box-shadow:0 1px 3px rgba(0,0,0,.06);display:inline-block;min-width:calc(100% - 24px)}
+  .ol-head{padding:10px 14px;border-bottom:1px solid #e3e5e8;font-family:"Segoe UI","Malgun Gothic",sans-serif}
+  .ol-head .s{font-size:16px;font-weight:600;color:#242424;margin-bottom:6px}
+  .ol-head .f{display:flex;gap:8px;align-items:center;color:#616161;font-size:12px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:#0f6cbd;color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px}
+  #olPages img{display:block}
+  #olView.fit #olChrome{display:block}
+  #olView.fit #olPages canvas{width:100% !important;height:auto}
+  .pbreak{font-size:10px;color:#b26a00;text-align:center;border-top:1px dashed #e0b45a;margin:0 0 0;padding:2px 0;background:#fffaf0}
+  #olMsg{padding:28px;color:var(--muted);line-height:1.7;max-width:520px}
+  #olMsg code{background:#f1f3f4;padding:1px 5px;border-radius:3px}
+  .busy-overlay{position:absolute;top:12px;right:16px;background:#1b1f27;color:#fff;padding:5px 10px;border-radius:14px;font-size:12px;display:none;align-items:center;gap:7px;z-index:2}
+  .busy-overlay.on{display:flex}
+  .spin{width:12px;height:12px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #olView.stale #olPages{opacity:.55;transition:opacity .2s}
+
+  /* webmail */
+  #wmView{flex:1;overflow:auto;background:#f6f8fc;position:relative}
+  .wm-shell{margin:12px;background:#fff;border-radius:12px;border:1px solid #e3e6eb;overflow:hidden}
+  .wm-head{padding:14px 18px 10px;font-family:Roboto,Arial,"Malgun Gothic",sans-serif}
+  .wm-head .s{font-size:20px;color:#1f1f1f;margin-bottom:10px;display:flex;gap:8px;align-items:center}
+  .wm-head .s .tag{font-size:11px;background:#dde3ea;border-radius:4px;padding:1px 6px;color:#444}
+  .wm-head .f{display:flex;gap:10px;align-items:center;font-size:13px;color:#5f6368}
+  .wm-head .f b{color:#1f1f1f}
+  .wm-head .avatar{background:#c5221f;width:36px;height:36px;font-size:14px}
+  .wm-frame-wrap{display:flex;justify-content:center;background:#fff}
+  #wmFrame{border:0;width:100%;display:block;min-height:200px;background:#fff}
+  .mobile .wm-shell{width:390px;margin:16px auto;border-radius:28px;border:10px solid #1f2329;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+  .mobile .wm-head .s{font-size:17px}
+  .clip-note{padding:10px 18px;font-size:13px;color:#5f6368;border-top:1px solid #eee}
+  .clip-note a{color:#1a73e8}
+  .wm-sub{font-size:11px;color:var(--muted);padding:0 12px 10px}
+
+  dialog{border:1px solid var(--line);border-radius:10px;padding:18px 20px;width:380px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+  dialog h3{margin:0 0 10px;font-size:15px}
+  dialog label{display:block;margin:8px 0 3px;color:var(--muted);font-size:12px}
+  dialog input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px}
+  dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+  dialog button{padding:6px 14px;border-radius:6px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  dialog button.primary{background:var(--ol);border-color:var(--ol);color:#fff}
+  dialog p{margin:6px 0 0;color:var(--muted);font-size:12px}
+  body.no-head .ol-head, body.no-head .wm-head{display:none}
+  #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1b1f27;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+  #toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="brand"><i></i>MailPreview</div>
+  <button id="bOpen" title="HTML 파일 열기 (Ctrl+O)">열기</button>
+  <button id="bSave" title="저장 (Ctrl+S)">저장</button>
+  <button id="bSample" title="샘플 템플릿 불러오기">샘플</button>
+  <span class="file-name" id="fileName">untitled.html</span>
+  <span class="sep"></span>
+  <label>Outlook 폭
+    <select id="olWidth">
+      <option value="600">600px</option><option value="700">700px</option>
+      <option value="800" selected>800px</option><option value="1024">1024px</option>
+    </select>
+  </label>
+  <label>엔진
+    <select id="olEngine" title="Word: 별도 Word 인스턴스로 렌더 / Outlook: Outlook 초안의 WordEditor로 렌더">
+      <option value="auto">자동</option><option value="word">Word</option><option value="outlook">Outlook</option>
+    </select>
+  </label>
+  <label title="입력을 멈추면 자동으로 Outlook 렌더"><input type="checkbox" id="autoRender" checked>자동 렌더</label>
+  <button id="bRender" title="Outlook 다시 렌더 (F5)">↻ 렌더</button>
+  <span class="sep"></span>
+  <label>웹메일
+    <select id="wmClient">
+      <option value="gmail">Gmail</option>
+      <option value="outlookcom">Outlook.com</option>
+      <option value="strict">엄격 (인라인 CSS만)</option>
+      <option value="raw">브라우저 원본</option>
+    </select>
+  </label>
+  <div class="seg" id="wmDevice"><button data-v="desktop" class="on">데스크톱</button><button data-v="mobile">모바일</button></div>
+  <span class="sep"></span>
+  <label title="Outlook·웹메일 미리보기 위쪽의 제목/보낸 사람 영역 표시"><input type="checkbox" id="showHeader" checked>제목 영역</label>
+  <span class="grow"></span>
+  <button id="bOutlook" title="실제 Outlook 새 메일 창에 이 HTML을 넣어 열기">Outlook에서 열기</button>
+  <button id="bSend" class="primary" title="Outlook으로 테스트 메일 발송">테스트 발송</button>
+</div>
+
+<main id="main">
+  <section class="pane code-pane">
+    <div class="ph"><b>HTML</b><div class="meta"><span id="sizeInfo">0 KB</span><span id="cursorInfo">1:1</span></div></div>
+    <div id="editorWrap"><textarea id="fallback" spellcheck="false"></textarea></div>
+    <div class="lint" id="lint">
+      <div class="lint-h" id="lintHead">
+        <b>호환성 검사</b>
+        <div class="tabs" id="lintTabs">
+          <span data-f="all" class="on">전체 <i id="cAll">0</i></span>
+          <span data-f="outlook">Outlook <i id="cOl">0</i></span>
+          <span data-f="webmail">웹메일 <i id="cWm">0</i></span>
+        </div>
+        <span class="caret" id="lintCaret">▾</span>
+      </div>
+      <div class="lint-list" id="lintList"></div>
+    </div>
+  </section>
+  <div class="split" data-i="1"></div>
+  <section class="pane ol-pane">
+    <div class="ph"><span class="dot" style="background:var(--ol)"></span><b>Outlook</b><span style="color:var(--muted);font-size:12px">Word 렌더 엔진</span>
+      <div class="meta"><span class="chip" id="olStatus">대기</span><span id="olTime"></span>
+        <select id="olZoom" title="표시 배율" style="height:24px;border:1px solid var(--line);border-radius:5px;background:#fff;font-size:12px"><option value="fit">맞춤</option><option value="100">100%</option></select></div>
+    </div>
+    <div id="olView">
+      <div class="busy-overlay" id="olBusy"><span class="spin"></span>렌더링 중…</div>
+      <div id="olChrome">
+        <div class="ol-head">
+          <div class="s" id="olSubject">제목</div>
+          <div class="f"><span class="avatar">MP</span><span><b style="color:#242424">MailPreview</b> &lt;preview@local&gt;<br>받는 사람: 나</span></div>
+        </div>
+        <div id="olPages"></div>
+        <div id="olMsg"></div>
+      </div>
+    </div>
+  </section>
+  <div class="split" data-i="2"></div>
+  <section class="pane wm-pane">
+    <div class="ph"><span class="dot" style="background:var(--wm)"></span><b>웹메일</b><span style="color:var(--muted);font-size:12px" id="wmLabel">Gmail 근사</span>
+      <div class="meta"><span class="chip" id="wmStatus">-</span></div>
+    </div>
+    <div id="wmView">
+      <div class="wm-shell">
+        <div class="wm-head">
+          <div class="s"><span id="wmSubject" contenteditable="true" spellcheck="false" title="클릭해서 제목 수정">제목</span><span class="tag">받은편지함</span></div>
+          <div class="f"><span class="avatar">M</span><span><b>MailPreview</b> &lt;preview@local&gt;<br>나에게</span></div>
+        </div>
+        <div class="wm-frame-wrap"><iframe id="wmFrame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="webmail preview"></iframe></div>
+        <div class="clip-note" id="clipNote" hidden>[메시지가 잘렸습니다] <a href="#" onclick="return false">전체 메시지 보기</a></div>
+      </div>
+      <div class="wm-sub" id="wmNote"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="sendDlg">
+  <form method="dialog">
+    <h3>Outlook으로 테스트 발송</h3>
+    <label>받는 사람</label>
+    <input id="sendTo" type="email" placeholder="test@gmail.com; test@naver.com" required>
+    <label>제목</label>
+    <input id="sendSubject">
+    <p>현재 Outlook 프로필의 기본 계정으로 실제 메일이 발송됩니다. Gmail·네이버 등 실제 웹메일에서 최종 확인할 때 사용하세요.</p>
+    <div class="row"><button value="cancel" formnovalidate>취소</button><button value="ok" class="primary">발송</button></div>
+  </form>
+</dialog>
+<input type="file" id="fileInput" accept=".html,.htm,text/html" hidden>
+<div id="toast"></div>
+
+<script src="vendor/codemirror/codemirror-bundle.js"></script>
+<script src="vendor/pdfjs/pdf.min.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("mp."+k); return v===null? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem("mp."+k, JSON.stringify(v)); }catch(e){} }
+};
+function toast(msg, ms=2200){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("on"), ms); }
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+const bytes = s => new Blob([s]).size;
+
+/* ======================================================================
+   Editor (CodeMirror, CDN 실패 시 textarea)
+   ====================================================================== */
+let cm = null;
+const ta = $("#fallback");
+const editor = {
+  get(){ return cm ? cm.getValue() : ta.value; },
+  set(v){ if(cm){ cm.setValue(v); cm.clearHistory(); } else { ta.value=v; } onChange(); },
+  goto(line){
+    if(cm){ cm.focus(); cm.setCursor({line:line-1, ch:0}); cm.scrollIntoView({line:line-1,ch:0}, 120);
+      const h = cm.addLineClass(line-1, "background", "cm-lint-line"); setTimeout(()=>cm.removeLineClass(h,"background","cm-lint-line"), 1500);
+    } else {
+      const lines = ta.value.split("\n"); let pos=0; for(let i=0;i<line-1;i++) pos+=lines[i].length+1;
+      ta.focus(); ta.setSelectionRange(pos,pos);
+    }
+  }
+};
+if (window.CodeMirror) {
+  ta.remove();
+  cm = CodeMirror($("#editorWrap"), {
+    mode:"htmlmixed", theme:"material-darker", lineNumbers:true, lineWrapping:false,
+    autoCloseTags:true, matchTags:{bothTags:true}, tabSize:2, indentUnit:2, indentWithTabs:false,
+    extraKeys:{ "Tab": c => c.somethingSelected()? c.indentSelection("add") : c.replaceSelection("  ") }
+  });
+  cm.on("change", ()=>onChange());
+  cm.on("cursorActivity", ()=>{ const p=cm.getCursor(); $("#cursorInfo").textContent=(p.line+1)+":"+(p.ch+1); });
+} else {
+  ta.addEventListener("input", ()=>onChange());
+}
+
+/* ======================================================================
+   Webmail 시뮬레이션 (각 클라이언트의 대표적인 필터링 규칙을 근사)
+   ====================================================================== */
+const CLIENTS = {
+  gmail:      { label:"Gmail 근사",       keepStyle:true,  styleLimit:16384, clip:102*1024, dropProps:["position"], note:"Gmail: <style> 블록 16KB 초과 시 제거 · 메일 102KB 초과 시 잘림 · position 제거 · 스크립트/외부 CSS 제거" },
+  outlookcom: { label:"Outlook.com 근사", keepStyle:true,  styleLimit:0,     clip:0,        dropProps:["position"], note:"Outlook.com: <style> 지원 · position 제거 · 스크립트/외부 CSS 제거" },
+  strict:     { label:"엄격 모드",        keepStyle:false, styleLimit:0,     clip:0,        dropProps:["position"], note:"엄격 모드: <style>·<link> 전부 제거, 인라인 style 만 적용 (오래된·보수적인 웹메일/모바일 클라이언트 최악의 경우)" },
+  raw:        { label:"브라우저 원본",    keepStyle:true,  styleLimit:0,     clip:0,        dropProps:[],           note:"브라우저 원본: 필터링 없이 표준 브라우저 엔진으로 렌더 (스크립트는 실행되지 않음)" }
+};
+function stripProps(css, props){
+  if(!props.length) return css;
+  const re = new RegExp("(^|[;{\\s])(" + props.join("|") + ")\\s*:[^;}]*;?", "gi");
+  return css.replace(re, "$1");
+}
+function sanitizeForWebmail(html, key){
+  const c = CLIENTS[key]; const info = { removed:[], clipped:false };
+  let src = html;
+  if (c.clip && bytes(src) > c.clip) { info.clipped = true; src = new TextDecoder().decode(new TextEncoder().encode(src).slice(0, c.clip)); }
+  const doc = new DOMParser().parseFromString(src, "text/html");
+  const kill = (sel, why) => doc.querySelectorAll(sel).forEach(n => { n.remove(); info.removed.push(why); });
+  kill("script", "script"); kill("iframe,frame,frameset,object,embed,applet", "embed/iframe");
+  kill("base", "base"); kill("meta[http-equiv='refresh' i]", "meta refresh");
+  kill("link[rel~='stylesheet' i]", "외부 CSS(link)");
+  doc.querySelectorAll("*").forEach(el => {
+    for (const a of [...el.attributes]) {
+      if (/^on/i.test(a.name)) { el.removeAttribute(a.name); info.removed.push("on* 이벤트"); }
+      else if (/^(href|src|action)$/i.test(a.name) && /^\s*javascript:/i.test(a.value)) { el.removeAttribute(a.name); info.removed.push("javascript: 링크"); }
+    }
+    if (el.hasAttribute("style") && c.dropProps.length) el.setAttribute("style", stripProps(el.getAttribute("style"), c.dropProps));
+    if (el.tagName === "A") el.setAttribute("target", "_blank");
+  });
+  doc.querySelectorAll("style").forEach(st => {
+    if (!c.keepStyle) { st.remove(); info.removed.push("<style> 블록"); return; }
+    let css = st.textContent;
+    if (c.styleLimit && bytes(css) > c.styleLimit) { st.remove(); info.removed.push("<style> 16KB 초과"); return; }
+    if (key !== "raw") css = css.replace(/@import[^;]+;/gi, () => { info.removed.push("@import"); return ""; });
+    st.textContent = stripProps(css, c.dropProps);
+  });
+  return { html: "<!DOCTYPE html>\n" + doc.documentElement.outerHTML, info };
+}
+
+const wmFrame = $("#wmFrame");
+function fitFrame(){
+  try {
+    const d = wmFrame.contentDocument; if(!d || !d.documentElement) return;
+    wmFrame.style.height = "0px";
+    const h = Math.max(d.documentElement.scrollHeight, d.body ? d.body.scrollHeight : 0);
+    wmFrame.style.height = Math.max(200, h) + "px";
+  } catch(e) {}
+}
+wmFrame.addEventListener("load", () => {
+  fitFrame();
+  try { wmFrame.contentDocument.querySelectorAll("img").forEach(i => i.addEventListener("load", fitFrame)); } catch(e){}
+});
+function renderWebmail(){
+  const key = $("#wmClient").value, c = CLIENTS[key];
+  const { html, info } = sanitizeForWebmail(editor.get(), key);
+  wmFrame.srcdoc = html;
+  $("#clipNote").hidden = !info.clipped;
+  $("#wmLabel").textContent = c.label;
+  const uniq = [...new Set(info.removed)];
+  $("#wmStatus").textContent = uniq.length ? "제거됨: " + uniq.join(", ") : "제거 항목 없음";
+  $("#wmStatus").className = "chip" + (uniq.length ? " busy" : " ok");
+  $("#wmStatus").title = uniq.join("\n");
+  $("#wmNote").textContent = c.note + "  ※ 근사치이므로 최종 확인은 '테스트 발송'으로 실제 웹메일에서 하세요.";
+}
+new ResizeObserver(debounce(fitFrame, 100)).observe($("#wmView"));
+
+/* ======================================================================
+   Outlook (Word 엔진) 렌더 - 로컬 서버가 Word/Outlook COM 호출
+   ====================================================================== */
+const ol = { busy:false, pending:false, seq:0, available:null };
+function olState(text, cls){ const s=$("#olStatus"); s.textContent=text; s.className="chip"+(cls?" "+cls:""); }
+function olMessage(html){ $("#olMsg").innerHTML = html || ""; $("#olMsg").style.display = html ? "block" : "none"; }
+
+async function renderOutlook(){
+  if (ol.available === false) return;
+  if (ol.busy) { ol.pending = true; return; }
+  ol.busy = true; ol.pending = false;
+  const my = ++ol.seq;
+  $("#olBusy").classList.add("on"); $("#olView").classList.add("stale"); olState("렌더링 중", "busy");
+  const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  try {
+    const r = await fetch("/api/render/outlook", { method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ html: editor.get(), width: +$("#olWidth").value, scale, engine: $("#olEngine").value }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    if (my === ol.seq) {
+      const nodes = await pdfToCanvases(j.pdf, scale);
+      if (my === ol.seq) {
+        const box = $("#olPages"); box.innerHTML = "";
+        nodes.forEach((c, i) => {
+          if (i > 0) { const b=document.createElement("div"); b.className="pbreak"; b.textContent="Word 페이지 경계 (실제 Outlook에서는 이어서 표시)"; box.appendChild(b); }
+          box.appendChild(c);
+        });
+      }
+      olMessage("");
+      olState(j.engine === "word" ? "Word" : "Outlook", "ok");
+      $("#olTime").textContent = (j.ms/1000).toFixed(1) + "s";
+    }
+  } catch (e) {
+    olState("오류", "bad");
+    olMessage("<b>Outlook 렌더 실패</b><br>" + escapeHtml(String(e.message || e)) +
+      "<br><br>· 클래식 Outlook / Word 가 설치되어 있는지 확인하세요 (새 Outlook for Windows 는 COM 을 지원하지 않습니다).<br>· Word 에 열려 있는 대화상자가 있다면 닫아주세요.");
+  } finally {
+    ol.busy = false;
+    $("#olBusy").classList.remove("on"); $("#olView").classList.remove("stale");
+    if (ol.pending) renderOutlook();
+  }
+}
+// Word 가 만든 PDF -> canvas (pdf.js). 마지막 페이지는 남은 여백을 잘라냄.
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdfjs/pdf.worker.min.js";
+async function pdfToCanvases(b64, dpr){
+  const bin = atob(b64), data = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+  const pdf = await pdfjsLib.getDocument({ data, cMapUrl:"vendor/pdfjs/cmaps/", cMapPacked:true, standardFontDataUrl:"vendor/pdfjs/standard_fonts/", isEvalSupported:false }).promise;
+  const out = [];
+  try {
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n);
+      const vp = page.getViewport({ scale: (96/72) * dpr });
+      let cv = document.createElement("canvas");
+      cv.width = Math.ceil(vp.width); cv.height = Math.ceil(vp.height);
+      const ctx = cv.getContext("2d", { willReadFrequently: n === pdf.numPages });
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (n === pdf.numPages) cv = cropBottom(cv, ctx, dpr);
+      cv.style.width = Math.round(cv.width / dpr) + "px";
+      cv.style.display = "block";
+      out.push(cv);
+    }
+  } finally { pdf.destroy(); }
+  return out;
+}
+function cropBottom(cv, ctx, dpr){
+  const { width:w, height:h } = cv, px = ctx.getImageData(0, 0, w, h).data;
+  const bi = ((h-2)*w + 2) * 4, br = px[bi], bg = px[bi+1], bb = px[bi+2];   // 하단 배경색 기준
+  let last = 0;
+  for (let y = h - 1; y >= 0 && !last; y--) {
+    const row = y * w * 4;
+    for (let x = 0; x < w; x += 2) {
+      const i = row + x*4;
+      if (Math.abs(px[i]-br) + Math.abs(px[i+1]-bg) + Math.abs(px[i+2]-bb) > 24) { last = y; break; }
+    }
+  }
+  const nh = Math.min(h, last + Math.round(16 * dpr));
+  if (!last || nh >= h) return cv;
+  const c2 = document.createElement("canvas"); c2.width = w; c2.height = nh;
+  c2.getContext("2d").drawImage(cv, 0, 0); return c2;
+}
+function escapeHtml(s){ return s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+async function checkStatus(){
+  if (location.protocol === "file:") {
+    ol.available = false; olState("서버 없음", "bad");
+    olMessage("Outlook 미리보기는 로컬 서버가 필요합니다.<br><code>MailPreview.exe</code> 로 실행하세요.");
+    return;
+  }
+  try {
+    const s = await (await fetch("/api/status")).json();
+    const okCom = s.com && (s.word || s.outlook);
+    if (!s.platform.startsWith("win") || !okCom || !window.pdfjsLib) {
+      ol.available = false; olState("사용 불가", "bad");
+      const why = [];
+      if (!s.platform.startsWith("win")) why.push("Windows 가 아닙니다 (" + s.platform + ")");
+      if (!s.com) why.push("COM 자동화를 사용할 수 없습니다" + (s.detail ? " (" + escapeHtml(s.detail) + ")" : ""));
+      if (!window.pdfjsLib) why.push("pdf.js 를 불러오지 못했습니다");
+      if (s.com && !s.word && !s.outlook) why.push("Word / 클래식 Outlook 을 찾을 수 없습니다");
+      olMessage("<b>Outlook 렌더 엔진을 사용할 수 없습니다.</b><br>" + why.join("<br>"));
+    } else {
+      ol.available = true;
+      olState((s.word ? "Word" : "") + (s.word && s.outlook ? " + " : "") + (s.outlook ? "Outlook" : "") + " 감지", "ok");
+      renderOutlook();
+    }
+  } catch (e) { ol.available = false; olState("서버 오류", "bad"); olMessage("로컬 서버에 연결할 수 없습니다."); }
+}
+
+/* ======================================================================
+   호환성 검사 (Outlook = Word 엔진 / 웹메일)
+   ====================================================================== */
+const RULES = [
+  // [대상, 심각도, 정규식, 메시지]
+  ["outlook","error", /display\s*:\s*(inline-)?(flex|grid)\b/gi, "<em>display:flex/grid</em> 미지원 → 레이아웃이 깨집니다. table 로 구성하세요."],
+  ["outlook","error", /\bposition\s*:\s*(absolute|relative|fixed|sticky)/gi, "<em>position</em> 미지원 (Outlook·Gmail 모두 무시/제거)."],
+  ["outlook","warn",  /\bfloat\s*:\s*(left|right)/gi, "<em>float</em> 지원이 불안정 → table/td 의 align 속성을 사용하세요."],
+  ["outlook","warn",  /border-radius\s*:/gi, "<em>border-radius</em> 무시 → Outlook 에서는 각진 모서리 (둥근 버튼은 VML 필요)."],
+  ["outlook","warn",  /(box|text)-shadow\s*:/gi, "<em>box/text-shadow</em> 무시."],
+  ["outlook","warn",  /(max|min)-(width|height)\s*:/gi, "<em>max/min-width</em> 무시 → width 속성 또는 &lt;!--[if mso]&gt; 고정폭 테이블로 감싸세요."],
+  ["outlook","warn",  /background(-image)?\s*:[^;"']*url\(/gi, "CSS <em>배경 이미지</em> 미지원 → VML(v:rect / v:fill) 또는 background 속성 사용."],
+  ["outlook","warn",  /(linear|radial)-gradient\(/gi, "<em>gradient</em> 미지원 → 단색 폴백(background-color)을 지정하세요."],
+  ["outlook","warn",  /\b(rgba|hsla?)\s*\(/gi, "<em>rgba/hsl</em> 색상 미지원 → #RRGGBB 를 사용하세요."],
+  ["outlook","warn",  /\bopacity\s*:/gi, "<em>opacity</em> 무시."],
+  ["outlook","info",  /\b(transform|transition|animation)\s*:/gi, "<em>transform/transition/animation</em> 무시."],
+  ["outlook","info",  /@media\b/gi, "<em>@media</em> 쿼리는 Outlook 데스크톱에서 무시됩니다 (데스크톱 레이아웃이 기본이 되도록 작성)."],
+  ["outlook","warn",  /@font-face\b/gi, "<em>@font-face</em> 웹폰트 미지원 → Times New Roman 으로 대체될 수 있으니 mso 전용 font-family 지정 권장."],
+  ["outlook","info",  /:hover\b/gi, "<em>:hover</em> 무시."],
+  ["outlook","warn",  /<div\b[^>]*style\s*=\s*["'][^"']*\b(width|padding|margin|background(-color)?)\s*:/gi, "<em>&lt;div&gt;</em> 의 width/padding/margin/배경은 Outlook 에서 대부분 무시 → &lt;td&gt; 에 지정하세요."],
+  ["outlook","warn",  /<img\b(?![^>]*\bwidth\s*=)[^>]*>/gi, "<em>&lt;img&gt;</em> 에 width 속성이 없음 → 고해상도 이미지가 원본 크기로 커지거나 DPI 스케일 문제가 생깁니다."],
+  ["outlook","error", /<(svg|video|audio|canvas)\b/gi, "<em>&lt;svg/video/audio/canvas&gt;</em> 미지원."],
+  ["outlook","warn",  /<(form|input|button|select|textarea)\b/gi, "<em>폼 요소</em>는 대부분의 메일 클라이언트에서 동작하지 않습니다."],
+  ["outlook","info",  /<p\b(?![^>]*margin)[^>]*>/gi, "<em>&lt;p&gt;</em> 기본 여백이 Outlook 과 웹메일에서 다릅니다 → style=\"margin:0\" 명시 권장."],
+  ["webmail","error", /<script\b/gi, "<em>&lt;script&gt;</em> 는 모든 웹메일에서 제거됩니다."],
+  ["webmail","warn",  /<link\b[^>]*stylesheet/gi, "외부 CSS(<em>&lt;link&gt;</em>)는 제거됩니다 → 인라인 스타일로 변환하세요."],
+  ["webmail","warn",  /@import\b/gi, "<em>@import</em> 는 제거됩니다."],
+  ["webmail","warn",  /<iframe\b|<embed\b|<object\b/gi, "<em>iframe/embed/object</em> 는 제거됩니다."],
+  ["webmail","warn",  /\son[a-z]+\s*=/gi, "<em>on* 이벤트</em> 속성은 제거됩니다."],
+  ["webmail","warn",  /src\s*=\s*["'](?!https?:|data:|cid:)[^"']+["']/gi, "<em>상대 경로 이미지</em> → 수신자에게 보이지 않습니다. https:// 절대 URL 을 사용하세요."],
+];
+let lintFilter = "all", lintItems = [];
+function lineOf(text, idx, starts){ let lo=0, hi=starts.length-1; while(lo<hi){ const m=(lo+hi+1)>>1; if(starts[m]<=idx) lo=m; else hi=m-1; } return lo+1; }
+function runLint(){
+  const text = editor.get();
+  const starts = [0]; for (let i=0;i<text.length;i++) if (text.charCodeAt(i)===10) starts.push(i+1);
+  // 조건부 주석(<!--[if mso]>...) 안은 Outlook 전용이므로 검사에서 제외
+  const masked = text.replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, m => m.replace(/[^\n]/g, " "));
+  const items = [];
+  for (const [who, sev, re, msg] of RULES) {
+    re.lastIndex = 0; let m, n = 0;
+    while ((m = re.exec(masked)) && n < 50) { items.push({ who, sev, line: lineOf(text, m.index, starts), msg }); n++; if (m[0].length===0) re.lastIndex++; }
+  }
+  const total = bytes(text);
+  if (total > 102*1024) items.push({ who:"webmail", sev:"error", line:1, msg:`메일 크기 ${(total/1024).toFixed(0)}KB → Gmail 은 <em>102KB</em> 초과 시 본문을 잘라냅니다.` });
+  const styles = [...text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)];
+  styles.forEach(s => { if (bytes(s[1]) > 16384) items.push({ who:"webmail", sev:"error", line: lineOf(text, s.index, starts), msg:"<em>&lt;style&gt;</em> 블록이 16KB 초과 → Gmail 이 블록 전체를 제거합니다." }); });
+  if (!/<!--\[if\s+mso/i.test(text) && /<table/i.test(text)) items.push({ who:"outlook", sev:"info", line:1, msg:"MSO 조건부 주석(<em>&lt;!--[if mso]&gt;</em>)이 없습니다. 고정폭 래퍼·폰트 지정에 활용하세요." });
+  const order = { error:0, warn:1, info:2 };
+  items.sort((a,b) => order[a.sev]-order[b.sev] || a.line-b.line);
+  lintItems = items; drawLint();
+}
+function drawLint(){
+  $("#cAll").textContent = lintItems.length;
+  $("#cOl").textContent = lintItems.filter(i=>i.who==="outlook").length;
+  $("#cWm").textContent = lintItems.filter(i=>i.who==="webmail").length;
+  const list = $("#lintList"); list.innerHTML = "";
+  const shown = lintItems.filter(i => lintFilter==="all" || i.who===lintFilter);
+  if (!shown.length) { list.innerHTML = '<div class="li"><span class="msg" style="color:#8c8">문제 없음</span></div>'; return; }
+  for (const it of shown) {
+    const d = document.createElement("div"); d.className = "li";
+    d.innerHTML = `<span class="sev ${it.sev}">${it.sev}</span><span class="ln">L${it.line}</span><span class="who">${it.who==="outlook"?"OL":"WM"}</span><span class="msg">${it.msg}</span>`;
+    d.onclick = () => editor.goto(it.line);
+    list.appendChild(d);
+  }
+}
+$("#lintTabs").addEventListener("click", e => { const s=e.target.closest("span[data-f]"); if(!s) return; e.stopPropagation();
+  lintFilter = s.dataset.f; document.querySelectorAll("#lintTabs span").forEach(x=>x.classList.toggle("on", x===s)); drawLint(); });
+$("#lintHead").addEventListener("click", () => { const l=$("#lint"); l.classList.toggle("collapsed"); $("#lintCaret").textContent = l.classList.contains("collapsed")?"▸":"▾"; store.set("lintCollapsed", l.classList.contains("collapsed")); });
+if (store.get("lintCollapsed", false)) { $("#lint").classList.add("collapsed"); $("#lintCaret").textContent="▸"; }
+
+/* ======================================================================
+   변경 처리
+   ====================================================================== */
+function subjectOf(html){
+  const s = $("#wmSubject").dataset.custom;
+  if (s) return s;
+  const m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return (m && m[1].trim()) || "(제목 없음)";
+}
+const renderWebmailDeb = debounce(renderWebmail, 250);
+const renderOutlookDeb = debounce(() => { if ($("#autoRender").checked) renderOutlook(); }, 1200);
+const lintDeb = debounce(runLint, 400);
+const saveDraft = debounce(() => store.set("draft", editor.get()), 600);
+function onChange(){
+  const html = editor.get();
+  $("#sizeInfo").textContent = (bytes(html)/1024).toFixed(1) + " KB";
+  const subj = subjectOf(html);
+  $("#olSubject").textContent = subj;
+  if (document.activeElement !== $("#wmSubject")) $("#wmSubject").textContent = subj;
+  renderWebmailDeb(); lintDeb(); saveDraft();
+  if (ol.available) renderOutlookDeb();
+}
+$("#wmSubject").addEventListener("input", e => { e.target.dataset.custom = e.target.textContent.trim(); $("#olSubject").textContent = e.target.textContent; });
+
+/* ======================================================================
+   파일 열기/저장 (File System Access API 지원 시 원본 파일에 바로 저장)
+   ====================================================================== */
+let fileHandle = null, fileName = store.get("fileName", "untitled.html");
+$("#fileName").textContent = fileName;
+function setFileName(n){ fileName = n; $("#fileName").textContent = n; store.set("fileName", n); }
+async function decodeFile(buf){
+  try { return new TextDecoder("utf-8", { fatal:true }).decode(buf); }
+  catch(e) { try { return new TextDecoder("euc-kr").decode(buf); } catch(e2) { return new TextDecoder().decode(buf); } }
+}
+async function openFile(){
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await showOpenFilePicker({ types:[{ description:"HTML", accept:{ "text/html":[".html",".htm"] } }] });
+      const f = await h.getFile(); fileHandle = h; setFileName(f.name);
+      editor.set(await decodeFile(await f.arrayBuffer())); toast(f.name + " 열림");
+    } catch(e) { if (e.name !== "AbortError") toast("열기 실패: " + e.message); }
+  } else $("#fileInput").click();
+}
+$("#fileInput").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return; fileHandle = null; setFileName(f.name);
+  editor.set(await decodeFile(await f.arrayBuffer())); e.target.value = ""; toast(f.name + " 열림");
+});
+async function saveFile(){
+  const data = editor.get();
+  try {
+    if (!fileHandle && window.showSaveFilePicker) {
+      fileHandle = await showSaveFilePicker({ suggestedName: fileName, types:[{ description:"HTML", accept:{ "text/html":[".html"] } }] });
+      setFileName(fileHandle.name);
+    }
+    if (fileHandle) { const w = await fileHandle.createWritable(); await w.write(data); await w.close(); toast(fileName + " 저장됨"); return; }
+  } catch(e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type:"text/html" })); a.download = fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000); toast("다운로드로 저장됨");
+}
+async function loadSample(){ try { const t = await (await fetch("sample.html")).text(); fileHandle=null; setFileName("sample.html"); editor.set(t); } catch(e) { toast("샘플을 불러올 수 없습니다"); } }
+$("#bOpen").onclick = openFile; $("#bSave").onclick = saveFile;
+$("#bSample").onclick = () => { if (editor.get().trim() && !confirmReplace()) return; loadSample(); };
+function confirmReplace(){ return window.confirm("현재 내용을 샘플로 바꿀까요?"); }
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey && e.key.toLowerCase() === "s") { e.preventDefault(); saveFile(); }
+  else if (e.ctrlKey && e.key.toLowerCase() === "o") { e.preventDefault(); openFile(); }
+  else if (e.key === "F5") { e.preventDefault(); renderOutlook(); renderWebmail(); }
+});
+
+/* ======================================================================
+   Outlook 연동: 새 메일 창 열기 / 테스트 발송
+   ====================================================================== */
+async function post(url, body){
+  const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j;
+}
+$("#bOutlook").onclick = async () => {
+  try { await post("/api/outlook/open", { html: editor.get(), subject: subjectOf(editor.get()) }); toast("Outlook 새 메일 창을 열었습니다"); }
+  catch(e) { toast("실패: " + e.message, 4000); }
+};
+$("#bSend").onclick = () => { $("#sendTo").value = store.get("sendTo", ""); $("#sendSubject").value = "[테스트] " + subjectOf(editor.get()); $("#sendDlg").showModal(); };
+$("#sendDlg").addEventListener("close", async () => {
+  if ($("#sendDlg").returnValue !== "ok") return;
+  const to = $("#sendTo").value.trim(); store.set("sendTo", to);
+  try { await post("/api/outlook/send", { html: editor.get(), subject: $("#sendSubject").value, to }); toast("발송했습니다 → " + to, 3500); }
+  catch(e) { toast("발송 실패: " + e.message, 4000); }
+});
+
+/* ======================================================================
+   옵션 / 레이아웃
+   ====================================================================== */
+function bindPersist(id, evt, after){
+  const el = $(id), k = "opt" + id;
+  const v = store.get(k, null);
+  if (v !== null) { if (el.type === "checkbox") el.checked = v; else el.value = v; }
+  el.addEventListener(evt, () => { store.set(k, el.type === "checkbox" ? el.checked : el.value); after && after(); });
+}
+bindPersist("#olWidth", "change", () => renderOutlook());
+bindPersist("#olEngine", "change", () => renderOutlook());
+bindPersist("#autoRender", "change", () => { if ($("#autoRender").checked) renderOutlook(); });
+bindPersist("#wmClient", "change", renderWebmail);
+bindPersist("#olZoom", "change", applyZoom);
+function applyZoom(){ $("#olView").classList.toggle("fit", $("#olZoom").value === "fit"); }
+applyZoom();
+bindPersist("#showHeader", "change", applyHeader);
+function applyHeader(){ document.body.classList.toggle("no-head", !$("#showHeader").checked); setTimeout(fitFrame, 30); }
+applyHeader();
+$("#bRender").onclick = () => renderOutlook();
+function setDevice(v){
+  document.querySelectorAll("#wmDevice button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  $("#wmView").classList.toggle("mobile", v === "mobile"); store.set("device", v); setTimeout(fitFrame, 50);
+}
+$("#wmDevice").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setDevice(b.dataset.v); });
+setDevice(store.get("device", "desktop"));
+
+// 분할선 드래그
+const main = $("#main");
+const cols = store.get("cols", null); if (cols) { main.style.setProperty("--c1", cols[0]); main.style.setProperty("--c2", cols[1]); }
+document.querySelectorAll(".split").forEach(sp => {
+  sp.addEventListener("pointerdown", e => {
+    sp.setPointerCapture(e.pointerId); sp.classList.add("drag");
+    const W = main.clientWidth, panes = main.querySelectorAll(".pane");
+    const w1 = panes[0].getBoundingClientRect().width, w2 = panes[1].getBoundingClientRect().width, x0 = e.clientX;
+    document.querySelectorAll("iframe").forEach(f => f.style.pointerEvents = "none");
+    const move = ev => {
+      const dx = ev.clientX - x0;
+      if (sp.dataset.i === "1") { const a = Math.max(200, Math.min(W-420, w1+dx)), b = Math.max(200, w2-(a-w1)); main.style.setProperty("--c1", (a/W*100)+"%"); main.style.setProperty("--c2", (b/W*100)+"%"); }
+      else { const b = Math.max(200, Math.min(W-w1-210, w2+dx)); main.style.setProperty("--c2", (b/W*100)+"%"); }
+      cm && cm.refresh();
+    };
+    const up = () => { sp.classList.remove("drag"); sp.removeEventListener("pointermove", move); sp.removeEventListener("pointerup", up);
+      document.querySelectorAll("iframe").forEach(f => f.style.pointerEvents = "");
+      store.set("cols", [main.style.getPropertyValue("--c1"), main.style.getPropertyValue("--c2")]); fitFrame(); };
+    sp.addEventListener("pointermove", move); sp.addEventListener("pointerup", up);
+  });
+});
+
+/* ======================================================================
+   시작
+   ====================================================================== */
+(async function init(){
+  olMessage("");
+  const draft = store.get("draft", "");
+  if (draft) editor.set(draft); else await loadSample();
+  runLint(); renderWebmail();
+  await checkStatus();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "mailpreview-vendor",
+  "private": true,
+  "description": "프론트엔드 서드파티 라이브러리를 static/vendor 로 복사합니다 (npm install && npm run vendor)",
+  "scripts": {
+    "vendor": "node scripts/vendor.mjs"
+  },
+  "devDependencies": {
+    "codemirror": "5.65.16",
+    "pdfjs-dist": "3.11.174"
+  }
+}
