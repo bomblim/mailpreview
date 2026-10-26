@@ -1,5 +1,7 @@
 name: build
 
+# main 에 push 하면 exe 를 빌드하고, VERSION 파일의 버전으로 아직 릴리스가 없으면
+# 태그(v<VERSION>) + GitHub Release 를 만들어 MailPreview.exe 를 첨부합니다.
 on:
   push:
     branches: [main]
@@ -15,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
@@ -27,9 +31,28 @@ jobs:
         with:
           name: MailPreview
           path: dist/MailPreview.exe
-      - name: Release (tag v*)
-        if: startsWith(github.ref, 'refs/tags/v')
+
+      - name: Decide release tag
+        id: rel
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="v$(tr -d '[:space:]' < VERSION)"
+            if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+              echo "release ${TAG} already exists - skip (bump VERSION to release)"
+              exit 0
+            fi
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Release
+        if: steps.rel.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: MailPreview ${{ steps.rel.outputs.tag }}
           files: dist/MailPreview.exe
           generate_release_notes: true

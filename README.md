@@ -23,7 +23,10 @@ HTML 메일 코드를 **Outlook(데스크톱)** 과 **웹메일** 에서 어떻�
 
 ## 다운로드
 [Actions](../../actions) 탭의 최신 `build` 실행 → Artifacts 의 **MailPreview** 에서 exe 를 받을 수 있습니다.
-`v*` 태그를 push 하면 [Releases](../../releases) 에 exe 가 자동 첨부됩니다.
+[Releases](../../releases) 에서 버전별 exe 를 받을 수 있습니다.
+
+### 새 버전 릴리스
+`VERSION` 파일의 버전을 올려 main 에 push 하면, Actions 가 빌드 후 `v<버전>` 태그와 Release 를 만들고 exe 를 첨부합니다. (`v*` 태그를 직접 push 해도 됩니다.)
 
 ## 빌드
 필요: Go 1.22+, Node.js 18+ (CGO 불필요 · Linux/macOS 에서 Windows exe 크로스 빌드 가능)
