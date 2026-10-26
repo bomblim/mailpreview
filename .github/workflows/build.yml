@@ -47,6 +47,10 @@ jobs:
           fi
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
+      - name: Source zip (Python 소스 실행판 포함)
+        if: steps.rel.outputs.tag != ''
+        run: git archive --format=zip --prefix=mailpreview/ -o dist/mailpreview-src.zip HEAD
+
       - name: Release
         if: steps.rel.outputs.tag != ''
         uses: softprops/action-gh-release@v2
@@ -54,5 +58,10 @@ jobs:
           tag_name: ${{ steps.rel.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: MailPreview ${{ steps.rel.outputs.tag }}
-          files: dist/MailPreview.exe
+          files: |
+            dist/MailPreview.exe
+            dist/mailpreview-src.zip
           generate_release_notes: true
+          body: |
+            - **MailPreview.exe**: 설치 없이 실행하는 단일 실행 파일
+            - **mailpreview-src.zip**: exe 없이 소스로 실행 (압축 해제 후 `run-python.bat`, Python 3.9+ 필요)
