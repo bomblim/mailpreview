@@ -57,7 +57,7 @@ scripts/vendor.mjs  서드파티 프론트엔드 라이브러리 복사
 .github/workflows/  exe 자동 빌드 (Artifacts / Releases)
 ```
 
-로그: `%LOCALAPPDATA%\MailPreview\mailpreview.log`
+로그: `%LOCALAPPDATA%\MailPreview\mailpreview.log` · 마지막 렌더 입력/결과: `%LOCALAPPDATA%\MailPreview\debug\last.htm, last.pdf`
 
 ## 라이선스 (포함된 서드파티)
 CodeMirror 5 (MIT), pdf.js (Apache-2.0), go-webview2 (MIT), go-ole (MIT)

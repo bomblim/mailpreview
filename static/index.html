@@ -361,7 +361,15 @@ async function renderOutlook(){
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.statusText);
     if (my === ol.seq) {
-      const nodes = await pdfToCanvases(j.pdf, scale);
+      const bytes = b64ToBytes(j.pdf);
+      let nodes, note = "";
+      try { nodes = await pdfToCanvases(bytes.slice(), scale); }
+      catch (pe) {
+        // pdf.js 가 못 읽으면 WebView2/Edge 내장 PDF 뷰어로 표시
+        note = "pdf.js 표시 실패 → 내장 PDF 뷰어로 표시 중 (" + escapeHtml(String(pe.message || pe)) + " · " + pdfDiag(bytes) + ")";
+        console.warn("pdf.js failed", pe, pdfDiag(bytes));
+        nodes = [pdfEmbed(bytes)];
+      }
       if (my === ol.seq) {
         const box = $("#olPages"); box.innerHTML = "";
         nodes.forEach((c, i) => {
@@ -369,6 +377,7 @@ async function renderOutlook(){
           box.appendChild(c);
         });
       }
+      if (note) { olMessage('<span style="font-size:12px">' + note + '</span>'); olState(j.engine === "word" ? "Word*" : "Outlook*", "busy"); $("#olTime").textContent = (j.ms/1000).toFixed(1) + "s"; return; }
       olMessage("");
       olState(j.engine === "word" ? "Word" : "Outlook", "ok");
       $("#olTime").textContent = (j.ms/1000).toFixed(1) + "s";
@@ -385,9 +394,25 @@ async function renderOutlook(){
 }
 // Word 가 만든 PDF -> canvas (pdf.js). 마지막 페이지는 남은 여백을 잘라냄.
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "vendor/pdfjs/pdf.worker.min.js";
-async function pdfToCanvases(b64, dpr){
-  const bin = atob(b64), data = new Uint8Array(bin.length);
+function b64ToBytes(b64){
+  const bin = atob(b64 || ""), data = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+  return data;
+}
+function pdfDiag(bytes){
+  const head = Array.from(bytes.slice(0, 8)).map(b => b >= 32 && b < 127 ? String.fromCharCode(b) : "\\x" + b.toString(16).padStart(2, "0")).join("");
+  return (bytes.length / 1024).toFixed(1) + "KB, head=" + head;
+}
+let lastPdfUrl = null;
+function pdfEmbed(bytes){
+  if (lastPdfUrl) URL.revokeObjectURL(lastPdfUrl);
+  lastPdfUrl = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+  const f = document.createElement("iframe");
+  f.src = lastPdfUrl + "#toolbar=0&navpanes=0&view=FitH";
+  f.style.cssText = "display:block;width:100%;height:calc(100vh - 170px);border:0;background:#fff";
+  return f;
+}
+async function pdfToCanvases(data, dpr){
   const pdf = await pdfjsLib.getDocument({ data, cMapUrl:"vendor/pdfjs/cmaps/", cMapPacked:true, standardFontDataUrl:"vendor/pdfjs/standard_fonts/", isEvalSupported:false }).promise;
   const out = [];
   try {

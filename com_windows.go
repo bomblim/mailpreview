@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	ole "github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
@@ -257,8 +259,35 @@ func renderOutlook(html string, widthPx int, engine string) ([]byte, string, err
 	if used == "" {
 		return nil, "", errors.New("렌더링 실패 - " + strings.Join(errs, " | "))
 	}
-	b, err := os.ReadFile(pdfPath)
+	b, err := readCompletePDF(pdfPath)
 	return b, used, err
+}
+
+// Word 가 파일을 완전히 쓸 때까지(%PDF 헤더 + %%EOF) 잠시 기다렸다가 읽음
+func readCompletePDF(p string) ([]byte, error) {
+	var b []byte
+	var err error
+	for i := 0; i < 60; i++ {
+		b, err = os.ReadFile(p)
+		if err == nil && bytes.HasPrefix(b, []byte("%PDF")) {
+			tail := b
+			if len(tail) > 2048 {
+				tail = tail[len(tail)-2048:]
+			}
+			if bytes.Contains(tail, []byte("%%EOF")) {
+				return b, nil
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err != nil {
+		return nil, err
+	}
+	head := b
+	if len(head) > 16 {
+		head = head[:16]
+	}
+	return nil, fmt.Errorf("Word 가 만든 PDF 가 올바르지 않습니다 (%d bytes, head=%q)", len(b), head)
 }
 
 func outlookMail(html, subject, to string, send bool) error {

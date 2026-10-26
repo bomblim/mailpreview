@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"mime"
 	"net"
 	"net/http"
 	"os"
@@ -74,7 +75,9 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 		if req.Width == 0 {
 			req.Width = 800
 		}
-		pdf, engine, err := renderOutlook(ensureHTMLDoc(req.HTML), req.Width, req.Engine)
+		doc := ensureHTMLDoc(req.HTML)
+		pdf, engine, err := renderOutlook(doc, req.Width, req.Engine)
+		saveDebug(doc, pdf, engine, err)
 		if err != nil {
 			writeJSON(w, 500, map[string]string{"error": err.Error()})
 			return
@@ -129,6 +132,21 @@ func ensureHTMLDoc(html string) string {
 	return "<html><head>" + meta + "</head><body>" + html + "</body></html>"
 }
 
+// 마지막 렌더 입력/결과를 %LOCALAPPDATA%\MailPreview\debug 에 남겨 문제 진단에 사용
+func saveDebug(html string, pdf []byte, engine string, err error) {
+	d := filepath.Join(dataDir(), "debug")
+	_ = os.MkdirAll(d, 0o755)
+	_ = os.WriteFile(filepath.Join(d, "last.htm"), []byte(html), 0o644)
+	if len(pdf) > 0 {
+		_ = os.WriteFile(filepath.Join(d, "last.pdf"), pdf, 0o644)
+	}
+	head := pdf
+	if len(head) > 16 {
+		head = head[:16]
+	}
+	log.Printf("render engine=%s err=%v pdfBytes=%d head=%q", engine, err, len(pdf), head)
+}
+
 func dataDir() string {
 	base := os.Getenv("LOCALAPPDATA")
 	if base == "" {
@@ -156,6 +174,16 @@ func main() {
 	}
 	startCOM()
 	defer stopCOM()
+
+	// Windows 는 레지스트리의 MIME 설정을 따르므로(.js -> text/plain 인 PC 가 있음) 명시적으로 고정
+	for ext, typ := range map[string]string{
+		".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+		".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+		".json": "application/json", ".bcmap": "application/octet-stream",
+		".pfb": "application/octet-stream", ".ttf": "font/ttf", ".svg": "image/svg+xml",
+	} {
+		_ = mime.AddExtensionType(ext, typ)
+	}
 
 	sub, _ := fs.Sub(staticFS, "static")
 	mux := http.NewServeMux()

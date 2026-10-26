@@ -45,6 +45,9 @@ func renderOutlook(html string, widthPx int, engine string) ([]byte, string, err
 		return nil, "", fmt.Errorf("%v %s", err, out)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, "mail.pdf"))
+	if os.Getenv("MAILPREVIEW_MOCK_BAD") == "1" && len(b) > 200 {
+		b = []byte("not a pdf at all") // 깨진 PDF 로 대체 뷰어 경로 시험
+	}
 	return b, "word", err
 }
 
