@@ -12,6 +12,17 @@ HTML 메일 코드를 **Outlook(데스크톱)** 과 **웹메일** 에서 어떻�
 ## 사용
 `MailPreview.exe` 더블클릭 (설치 불필요). 필요 조건: Windows 10/11, Word 또는 클래식 Outlook, Edge WebView2 런타임(Windows 기본 포함).
 
+## 소스 코드로 실행 (exe 없이)
+보안 정책상 exe 실행이 어려우면 Python 으로 소스를 그대로 실행할 수 있습니다. 화면과 기능은 exe 와 같습니다.
+
+1. Python 3.9+ 설치 ([python.org](https://www.python.org/downloads/), 설치 시 *Add python.exe to PATH* 체크)
+2. 이 저장소 받기: GitHub 의 **Code → Download ZIP** 후 압축 해제 (또는 `git clone`)
+3. 폴더의 **`run-python.bat`** 더블클릭
+   - 처음 한 번 `.venv` 가상환경을 만들고 `pywin32` 를 설치합니다
+   - Edge 앱 창으로 에디터가 열립니다 (http://127.0.0.1:8765)
+
+직접 실행: `pip install pywin32` 후 `python python\mailpreview.py`
+
 ## 동작 원리
 - **Outlook 패널**: Outlook 데스크톱은 HTML 메일을 Word 렌더링 엔진으로 그립니다. 숨겨진 별도 Word 인스턴스를 COM 으로 호출해 HTML → PDF 로 내보내고, pdf.js 로 표시합니다. Word 가 없으면 Outlook 메일 초안의 `WordEditor` 로 렌더합니다. `<!--[if mso]>` 조건부 주석과 VML 도 실제처럼 처리됩니다.
 - **웹메일 패널**: Gmail / Outlook.com / 엄격(인라인 CSS만) / 브라우저 원본 모드로 필터링을 근사합니다. 데스크톱·모바일(390px) 전환.
@@ -37,7 +48,7 @@ sh build.sh        # Windows 에서는 build.cmd
 ```
 
 빌드 스크립트가 하는 일:
-1. `npm install && npm run vendor` — CodeMirror 5, pdf.js 를 `static/vendor/` 로 복사 (exe 에 embed 되어 오프라인 동작)
+1. `npm install && npm run vendor` — CodeMirror 5, pdf.js 를 `static/vendor/` 로 갱신 (exe 에 embed 되어 오프라인 동작)
 2. `go run ./tools/mkicon` — 아이콘(`app.ico`) 생성
 3. `rsrc` — 아이콘 + DPI 인식 매니페스트를 `rsrc_windows_amd64.syso` 로
 4. `go build -ldflags "-H windowsgui"` — 단일 exe
@@ -51,7 +62,9 @@ main.go             로컬 HTTP 서버 + API
 com_windows.go      Word / Outlook COM 렌더러 (go-ole)
 ui_windows.go       WebView2 창 (go-webview2)
 stub_other.go       비 Windows 개발용 스텁
-static/             프론트엔드 (index.html, sample.html; vendor/ 는 빌드 시 생성)
+python/             소스 실행판 서버 (mailpreview.py, pywin32)
+run-python.bat      소스 실행판 실행기
+static/             프론트엔드 (index.html, sample.html, vendor/ = CodeMirror·pdf.js)
 tools/mkicon/       아이콘 생성기
 scripts/vendor.mjs  서드파티 프론트엔드 라이브러리 복사
 .github/workflows/  exe 자동 빌드 (Artifacts / Releases)

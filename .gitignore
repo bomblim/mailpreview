@@ -3,9 +3,10 @@ dist/
 *.exe
 mp-dev
 node_modules/
-static/vendor/
 app.ico
 *.syso
 package-lock.json
+.venv/
+__pycache__/
 go.local.mod
 go.local.sum
