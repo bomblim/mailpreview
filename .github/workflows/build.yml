@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Template engine tests
+        run: node tests/freemarker.test.js
       - name: Build MailPreview.exe
         run: sh ./build.sh
       - uses: actions/upload-artifact@v4

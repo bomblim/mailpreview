@@ -1,0 +1,32 @@
+{
+  "system": {
+    "name": "통합업무시스템",
+    "url": "https://example.com"
+  },
+  "recipient": {
+    "name": "홍길동",
+    "dept": "경영지원팀"
+  },
+  "request": {
+    "id": "REQ-2026-001234",
+    "type": "계정 권한 신청",
+    "status": "DONE",
+    "requestedAt": "2026-10-26T14:30:00",
+    "processedAt": "2026-10-26T15:10:00",
+    "details": [
+      "요청하신 시스템 접근 권한이 부여되었습니다.",
+      "다음 로그인부터 적용됩니다."
+    ],
+    "comment": null
+  },
+  "notices": [
+    "본인이 요청하지 않은 건이라면 시스템 담당자에게 문의해 주세요.",
+    "처리 결과는 시스템의 [나의 요청] 메뉴에서도 확인할 수 있습니다."
+  ],
+  "contact": {
+    "dept": "정보시스템팀",
+    "name": "김담당",
+    "ext": "1234",
+    "email": "helpdesk@example.com"
+  }
+}

@@ -23,6 +23,26 @@ HTML 메일 코드를 **Outlook(데스크톱)** 과 **웹메일** 에서 어떻�
 
 직접 실행: `pip install pywin32` 후 `python python\mailpreview.py`
 
+## 템플릿 + 데이터셋 바인딩 (FreeMarker)
+툴바의 **템플릿** 에서 엔진을 고르면 코드 창에 탭이 생깁니다.
+
+| 탭 | 내용 |
+|---|---|
+| 템플릿 (FTL) | FreeMarker 템플릿 (`.ftl` / `.ftlh` 를 열면 자동 전환) |
+| 데이터셋 JSON | 템플릿에 바인딩할 데이터. 최상위는 `{ }` 객체 (`.json` 을 열면 이 탭으로) |
+| 결과 HTML | 바인딩된 HTML (읽기 전용). Outlook·웹메일 미리보기, 호환성 검사, 테스트 발송은 모두 이 결과로 동작 |
+
+- 입력하는 즉시 바인딩되어 두 미리보기에 반영됩니다. 오류가 나면 상단 빨간 줄에 **위치(줄:칸)와 원인**이 표시되고, 미리보기는 마지막 정상 결과를 유지합니다.
+- 실제 FreeMarker 처럼 엄격합니다: 데이터셋에 없는 값을 쓰면 오류 (`${x!"기본값"}`, `<#if x??>` 로 처리), `<#if>` 에는 boolean 만, boolean 은 `?c` / `?string("예","아니오")` 로 출력.
+- **변수 채우기**(데이터셋 탭): 템플릿에서 쓰는 최상위 변수 중 데이터셋에 없는 것을 빈 값으로 추가합니다.
+- **이스케이프**: `.ftlh` 처럼 `${}` 출력을 HTML 이스케이프 (`?no_esc` 로 해제).
+- 샘플 → **시스템 알림 (FTL+JSON)** 으로 예제를 볼 수 있습니다.
+
+지원 문법 (FreeMarker 2.3.x 기준): `${}`·문자열 안 `${}`, `<#if>/<#elseif>/<#else>`, `<#list>`(`<#else>`, `<#sep>`, `<#items>`, `<#break>`), `<#assign>/<#global>/<#local>`(블록 캡처 포함), `<#switch>/<#case>/<#default>`, `<#macro>/<#nested>/<#return>` + `<@매크로/>`, `<#attempt>/<#recover>`, `<#compress>`, `<#noparse>`, `<#setting>`, 연산자 `! ?? .. == != < > lt gt && || + - * / %`, 주요 내장함수(문자열·숫자·날짜·시퀀스·해시·루프 변수), 공백 제거(white-space stripping).
+미지원: `<#include>/<#import>`(템플릿 안에 직접 작성), `<#function>`, 람다(`?filter`, `?map`).
+
+엔진은 `static/engines/` 에 `window.TemplateEngines[id] = { render(tpl, data, opts) }` 형태로 등록되며, Jinja2·Velocity 도 같은 방식으로 추가할 예정입니다. 엔진 테스트: `node tests/freemarker.test.js`
+
 ## 동작 원리
 - **Outlook 패널**: Outlook 데스크톱은 HTML 메일을 Word 렌더링 엔진으로 그립니다. 숨겨진 별도 Word 인스턴스를 COM 으로 호출해 HTML → PDF 로 내보내고, pdf.js 로 표시합니다. Word 가 없으면 Outlook 메일 초안의 `WordEditor` 로 렌더합니다. `<!--[if mso]>` 조건부 주석과 VML 도 실제처럼 처리됩니다.
 - **웹메일 패널**: Gmail / Outlook.com / 엄격(인라인 CSS만) / 브라우저 원본 모드로 필터링을 근사합니다. 데스크톱·모바일(390px) 전환.
@@ -65,6 +85,9 @@ stub_other.go       비 Windows 개발용 스텁
 python/             소스 실행판 서버 (mailpreview.py, pywin32)
 run-python.bat      소스 실행판 실행기
 static/             프론트엔드 (index.html, sample.html, vendor/ = CodeMirror·pdf.js)
+static/engines/     템플릿 엔진 (freemarker.js)
+static/samples/     템플릿 + 데이터셋 샘플
+tests/              엔진 테스트 (node)
 tools/mkicon/       아이콘 생성기
 scripts/vendor.mjs  서드파티 프론트엔드 라이브러리 복사
 .github/workflows/  exe 자동 빌드 (Artifacts / Releases)

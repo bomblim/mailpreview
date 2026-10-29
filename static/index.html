@@ -29,6 +29,10 @@
   .bar button.primary{background:var(--ol);border-color:var(--ol)}
   .bar button.primary:hover{background:#115ea3}
   .bar label{display:flex;align-items:center;gap:5px;color:#b7bdc8}
+  .bar select{padding:4px 6px}
+  #sampleSel{width:78px} #tplEngine{width:112px} #olWidth{width:76px} #olEngine{width:84px} #wmClient{width:108px}
+  .bar .file-name{max-width:120px}
+  .bar{gap:5px} .bar .sep{margin:0 2px} .brand{margin-right:4px}
   .bar .grow{flex:1}
   .seg{display:inline-flex;border:1px solid #3a404c;border-radius:6px;overflow:hidden}
   .seg button{border:0;border-radius:0;background:#2a303b}
@@ -53,6 +57,25 @@
   .code-pane .ph .meta{color:#999}
   #editorWrap{flex:1;min-height:0;position:relative}
   .CodeMirror{position:absolute;inset:0;height:auto;font:13px/1.55 Consolas,"D2Coding","Cascadia Mono",monospace}
+  .ctabs{display:flex;gap:2px;height:100%;align-items:flex-end;margin-left:-4px}
+  .ctabs button{background:transparent;border:0;border-bottom:2px solid transparent;color:#9aa0a6;padding:0 10px;height:33px;cursor:pointer;font:inherit;font-weight:600}
+  .ctabs button small{font-weight:400;color:#777;font-size:10px}
+  .ctabs button:hover{color:#ddd}
+  .ctabs button.on{color:#fff;border-bottom-color:#F37321}
+  body.eng-none .eng-tab, body.eng-none .eng-opt{display:none}
+  .mini{background:#3a3a3a;border:1px solid #4a4a4a;color:#ddd;border-radius:4px;font-size:11px;padding:1px 7px;cursor:pointer}
+  .mini:hover{background:#474747}
+  .code-pane .chip.ok{background:#1e3a26;color:#7fd99a}.code-pane .chip.bad{background:#4a1c1a;color:#ff8a80}
+  .bind-bar{display:flex;align-items:center;gap:10px;padding:6px 12px;background:#fce8e6;color:#8c1d18;border-bottom:1px solid #f3b8b3;font-size:12.5px;flex:none}
+  .bind-bar[hidden]{display:none}
+  .bind-bar a{color:#8c1d18;font-family:Consolas,monospace;font-weight:600;white-space:nowrap}
+  .bind-bar #bindMsg{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bind-note{color:#b3261e;opacity:.75;white-space:nowrap}
+  .cm-bind-err{background:rgba(255,80,80,.18)}
+  .cm-s-material-darker .cm-ftl-tag{color:#ff9a5a;font-weight:600}
+  .cm-s-material-darker .cm-ftl-dir{color:#f7b380}
+  .cm-s-material-darker .cm-ftl-interp{color:#ffd479;background:rgba(255,212,121,.08)}
+  .cm-s-material-darker .cm-ftl-comment{color:#6f7a7f;font-style:italic}
   #fallback{position:absolute;inset:0;width:100%;height:100%;border:0;resize:none;background:var(--code);color:#eee;padding:10px;font:13px/1.55 Consolas,monospace;outline:none}
   .cm-lint-line{background:rgba(255,170,0,.12)}
   .lint{flex:none;max-height:34%;display:flex;flex-direction:column;border-top:1px solid #333;background:#1a1a1a;color:#ddd}
@@ -68,7 +91,7 @@
   .li .sev{flex:none;width:44px;font-size:10px;font-weight:700;text-transform:uppercase;border-radius:3px;text-align:center;padding:1px 0}
   .sev.error{background:#5c1d1a;color:#ff8a80}.sev.warn{background:#4d3a10;color:#ffcc66}.sev.info{background:#1d2f52;color:#8ab4f8}
   .li .ln{flex:none;color:#888;width:46px;font-family:Consolas,monospace}
-  .li .who{flex:none;color:#9aa;font-size:11px}
+  .li .who{flex:none;color:#9aa;font-size:11px;width:30px}
   .li .msg{color:#ddd}
   .li .msg em{color:#8ab4f8;font-style:normal}
 
@@ -127,44 +150,66 @@
 
 <div class="bar">
   <div class="brand"><i></i>MailPreview</div>
-  <button id="bOpen" title="HTML 파일 열기 (Ctrl+O)">열기</button>
-  <button id="bSave" title="저장 (Ctrl+S)">저장</button>
-  <button id="bSample" title="샘플 템플릿 불러오기">샘플</button>
+  <button id="bOpen" title="파일 열기 (Ctrl+O) - .html/.ftl 은 템플릿, .json 은 데이터셋으로">열기</button>
+  <button id="bSave" title="현재 탭 저장 (Ctrl+S)">저장</button>
+  <select id="sampleSel" title="샘플 불러오기">
+    <option value="">샘플…</option>
+    <option value="newsletter">뉴스레터 (HTML)</option>
+    <option value="system">시스템 알림 (FTL+JSON)</option>
+  </select>
   <span class="file-name" id="fileName">untitled.html</span>
   <span class="sep"></span>
-  <label>Outlook 폭
+  <label title="템플릿 엔진: 데이터셋(JSON)을 바인딩한 결과를 미리보기에 표시">템플릿
+    <select id="tplEngine">
+      <option value="none">없음 (HTML)</option>
+      <option value="freemarker">FreeMarker</option>
+      <option value="jinja2" disabled>Jinja2 (예정)</option>
+      <option value="velocity" disabled>Velocity (예정)</option>
+    </select>
+  </label>
+  <label class="eng-opt" title="HTML 자동 이스케이프 (.ftlh 템플릿과 같은 동작, ?no_esc 로 해제)"><input type="checkbox" id="autoEsc">이스케이프</label>
+  <span class="sep"></span>
+  <label title="Outlook 미리보기 폭">폭
     <select id="olWidth">
       <option value="600">600px</option><option value="700">700px</option>
       <option value="800" selected>800px</option><option value="1024">1024px</option>
     </select>
   </label>
-  <label>엔진
+  <label title="Outlook 렌더 엔진">렌더
     <select id="olEngine" title="Word: 별도 Word 인스턴스로 렌더 / Outlook: Outlook 초안의 WordEditor로 렌더">
       <option value="auto">자동</option><option value="word">Word</option><option value="outlook">Outlook</option>
     </select>
   </label>
-  <label title="입력을 멈추면 자동으로 Outlook 렌더"><input type="checkbox" id="autoRender" checked>자동 렌더</label>
-  <button id="bRender" title="Outlook 다시 렌더 (F5)">↻ 렌더</button>
+  <label title="입력을 멈추면 자동으로 Outlook 렌더"><input type="checkbox" id="autoRender" checked>자동</label>
+  <button id="bRender" title="Outlook 다시 렌더 (F5)">↻</button>
   <span class="sep"></span>
   <label>웹메일
     <select id="wmClient">
       <option value="gmail">Gmail</option>
       <option value="outlookcom">Outlook.com</option>
-      <option value="strict">엄격 (인라인 CSS만)</option>
+      <option value="strict">엄격 (인라인만)</option>
       <option value="raw">브라우저 원본</option>
     </select>
   </label>
   <div class="seg" id="wmDevice"><button data-v="desktop" class="on">데스크톱</button><button data-v="mobile">모바일</button></div>
   <span class="sep"></span>
-  <label title="Outlook·웹메일 미리보기 위쪽의 제목/보낸 사람 영역 표시"><input type="checkbox" id="showHeader" checked>제목 영역</label>
+  <label title="Outlook·웹메일 미리보기 위쪽의 제목/보낸 사람 영역 표시"><input type="checkbox" id="showHeader" checked>제목</label>
   <span class="grow"></span>
-  <button id="bOutlook" title="실제 Outlook 새 메일 창에 이 HTML을 넣어 열기">Outlook에서 열기</button>
+  <button id="bOutlook" title="실제 Outlook 새 메일 창에 이 HTML을 넣어 열기">Outlook 열기</button>
   <button id="bSend" class="primary" title="Outlook으로 테스트 메일 발송">테스트 발송</button>
 </div>
 
+<div class="bind-bar" id="bindBar" hidden><b>바인딩 오류</b><a href="#" id="bindLoc"></a><span id="bindMsg"></span><span class="bind-note">미리보기는 마지막 정상 결과를 표시 중</span></div>
 <main id="main">
   <section class="pane code-pane">
-    <div class="ph"><b>HTML</b><div class="meta"><span id="sizeInfo">0 KB</span><span id="cursorInfo">1:1</span></div></div>
+    <div class="ph">
+      <div class="ctabs" id="codeTabs">
+        <button data-t="tpl" class="on" id="tabTpl">HTML</button>
+        <button data-t="data" class="eng-tab" title="템플릿에 바인딩할 데이터 (JSON)">데이터셋 <small>JSON</small></button>
+        <button data-t="out" class="eng-tab" title="바인딩된 결과 HTML (읽기 전용)">결과 HTML</button>
+      </div>
+      <div class="meta"><button class="mini" id="bFillData" hidden title="템플릿에서 쓰는 변수 중 데이터셋에 없는 것을 빈 값으로 추가">변수 채우기</button><span class="chip" id="bindStatus" hidden></span><span id="sizeInfo">0 KB</span><span id="cursorInfo">1:1</span></div>
+    </div>
     <div id="editorWrap"><textarea id="fallback" spellcheck="false"></textarea></div>
     <div class="lint" id="lint">
       <div class="lint-h" id="lintHead">
@@ -232,6 +277,7 @@
 
 <script src="vendor/codemirror/codemirror-bundle.js"></script>
 <script src="vendor/pdfjs/pdf.min.js"></script>
+<script src="engines/freemarker.js"></script>
 <script>
 "use strict";
 const $ = s => document.querySelector(s);
@@ -244,34 +290,160 @@ function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout
 const bytes = s => new Blob([s]).size;
 
 /* ======================================================================
-   Editor (CodeMirror, CDN 실패 시 textarea)
+   Editor: 템플릿 / 데이터셋(JSON) / 결과 HTML 탭 (CodeMirror Doc 교체)
    ====================================================================== */
-let cm = null;
+const TABS = {
+  tpl:  { mode: "htmlmixed" },
+  data: { mode: { name: "javascript", json: true } },
+  out:  { mode: "htmlmixed", readOnly: true },
+};
+let cm = null, activeTab = "tpl";
+const docs = {}, plain = { tpl: "", data: "", out: "" };
 const ta = $("#fallback");
 const editor = {
-  get(){ return cm ? cm.getValue() : ta.value; },
-  set(v){ if(cm){ cm.setValue(v); cm.clearHistory(); } else { ta.value=v; } onChange(); },
-  goto(line){
-    if(cm){ cm.focus(); cm.setCursor({line:line-1, ch:0}); cm.scrollIntoView({line:line-1,ch:0}, 120);
-      const h = cm.addLineClass(line-1, "background", "cm-lint-line"); setTimeout(()=>cm.removeLineClass(h,"background","cm-lint-line"), 1500);
+  get(tab = "tpl"){ return cm ? docs[tab].getValue() : plain[tab]; },
+  set(v, tab = "tpl"){
+    if (cm) { docs[tab].setValue(v); if (tab !== "out") docs[tab].clearHistory(); }
+    else { plain[tab] = v; if (tab === activeTab) ta.value = v; }
+    if (tab !== "out") onChange();
+  },
+  goto(line, tab = "tpl", col){
+    switchTab(tab);
+    if (cm) {
+      cm.focus(); cm.setCursor({ line: line-1, ch: Math.max(0, (col||1)-1) }); cm.scrollIntoView({ line: line-1, ch: 0 }, 120);
+      const h = cm.addLineClass(line-1, "background", "cm-lint-line"); setTimeout(() => cm.removeLineClass(h, "background", "cm-lint-line"), 1500);
     } else {
-      const lines = ta.value.split("\n"); let pos=0; for(let i=0;i<line-1;i++) pos+=lines[i].length+1;
-      ta.focus(); ta.setSelectionRange(pos,pos);
+      const lines = ta.value.split("\n"); let pos = 0; for (let i = 0; i < line-1 && i < lines.length; i++) pos += lines[i].length + 1;
+      ta.focus(); ta.setSelectionRange(pos, pos);
     }
   }
 };
+// FreeMarker 태그/보간을 HTML 하이라이트 위에 덮어서 표시 (HTML 모드가 <#...> 를 오류로 칠하지 않도록)
+if (window.CodeMirror && CodeMirror.overlayMode) {
+  CodeMirror.defineMode("ftl-html", config => CodeMirror.overlayMode(CodeMirror.getMode(config, "htmlmixed"), {
+    startState: () => ({ mode: null, depth: 0, quote: null }),
+    copyState: s => Object.assign({}, s),
+    token(stream, st) {
+      if (!st.mode) {
+        if (stream.match("<#--")) st.mode = "comment";
+        else if (stream.match(/^<\/?[#@][\w.]*/)) { st.mode = "dir"; st.depth = 0; return "ftl-tag"; }
+        else if (stream.match("${")) { st.mode = "interp"; st.depth = 0; return "ftl-interp"; }
+        else { while (stream.next() != null && !stream.match(/^(<\/?[#@]|\$\{)/, false)) {} return null; }
+      }
+      if (st.mode === "comment") {
+        if (stream.skipTo("-->")) { stream.match("-->"); st.mode = null; } else stream.skipToEnd();
+        return "ftl-comment";
+      }
+      while (!stream.eol()) {
+        const c = stream.next();
+        if (st.quote) { if (c === "\\") stream.next(); else if (c === st.quote) st.quote = null; continue; }
+        if (c === '"' || c === "'") { st.quote = c; continue; }
+        if (c === "(" || c === "[" || c === "{") { st.depth++; continue; }
+        if (st.mode === "interp" && c === "}" && st.depth === 0) { st.mode = null; return "ftl-interp"; }
+        if (c === ")" || c === "]" || c === "}") { st.depth--; continue; }
+        if (st.mode === "dir" && st.depth <= 0 && (c === ">" || (c === "/" && stream.peek() === ">"))) {
+          if (c === "/") stream.next();
+          st.mode = null; return "ftl-tag";
+        }
+      }
+      return st.mode === "interp" ? "ftl-interp" : "ftl-dir";
+    }
+  }));
+}
+const tplMode = () => engineId() !== "none" && CodeMirror.modes["ftl-html"] ? "ftl-html" : "htmlmixed";
 if (window.CodeMirror) {
   ta.remove();
+  for (const k in TABS) docs[k] = CodeMirror.Doc("", TABS[k].mode);
   cm = CodeMirror($("#editorWrap"), {
-    mode:"htmlmixed", theme:"material-darker", lineNumbers:true, lineWrapping:false,
-    autoCloseTags:true, matchTags:{bothTags:true}, tabSize:2, indentUnit:2, indentWithTabs:false,
-    extraKeys:{ "Tab": c => c.somethingSelected()? c.indentSelection("add") : c.replaceSelection("  ") }
+    value: docs.tpl, theme: "material-darker", lineNumbers: true, lineWrapping: false,
+    autoCloseTags: true, matchTags: { bothTags: true }, tabSize: 2, indentUnit: 2, indentWithTabs: false,
+    extraKeys: { "Tab": c => c.somethingSelected() ? c.indentSelection("add") : c.replaceSelection("  ") }
   });
-  cm.on("change", ()=>onChange());
-  cm.on("cursorActivity", ()=>{ const p=cm.getCursor(); $("#cursorInfo").textContent=(p.line+1)+":"+(p.ch+1); });
+  docs.tpl.on("change", () => onChange());
+  docs.data.on("change", () => onChange());
+  cm.on("cursorActivity", () => { const p = cm.getCursor(); $("#cursorInfo").textContent = (p.line+1) + ":" + (p.ch+1); });
 } else {
-  ta.addEventListener("input", ()=>onChange());
+  ta.addEventListener("input", () => { if (activeTab !== "out") { plain[activeTab] = ta.value; onChange(); } });
 }
+function switchTab(tab){
+  if (engineId() === "none" && tab !== "tpl") tab = "tpl";
+  if (!cm && activeTab !== "out") plain[activeTab] = ta.value;
+  activeTab = tab;
+  document.querySelectorAll("#codeTabs button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
+  if (cm) {
+    cm.swapDoc(docs[tab]); cm.setOption("readOnly", !!TABS[tab].readOnly);
+    if (tab === "tpl" && cm.getOption("mode") !== tplMode()) cm.setOption("mode", tplMode());
+    cm.refresh();
+  }
+  else { ta.value = plain[tab]; ta.readOnly = !!TABS[tab].readOnly; }
+  $("#bFillData").hidden = tab !== "data" || engineId() === "none";
+  updateFileName(); updateSize();
+  store.set("tab", tab);
+}
+$("#codeTabs").addEventListener("click", e => { const b = e.target.closest("button[data-t]"); if (b) switchTab(b.dataset.t); });
+
+/* ======================================================================
+   템플릿 엔진 바인딩 (템플릿 + 데이터셋 -> 결과 HTML)
+   엔진은 static/engines/*.js 가 window.TemplateEngines[id] 로 등록합니다.
+   새 엔진(jinja2, velocity 등)은 같은 형태 { render(tpl, data, opts) } 로 추가하면 됩니다.
+   ====================================================================== */
+const engineId = () => $("#tplEngine").value;
+let bound = { html: "", ok: true, error: null, ms: 0 };
+function parseDataset(text){
+  if (!text.trim()) return {};
+  let v;
+  try { v = JSON.parse(text); }
+  catch (e) {
+    let line = 1, col = 1, m;
+    if ((m = /line (\d+) column (\d+)/.exec(e.message))) { line = +m[1]; col = +m[2]; }
+    else if ((m = /position (\d+)/.exec(e.message))) { const pre = text.slice(0, +m[1]); line = pre.split("\n").length; col = +m[1] - pre.lastIndexOf("\n"); }
+    throw Object.assign(new Error("JSON 형식 오류 - " + e.message.replace(/^JSON\.parse: /, "")), { line, col });
+  }
+  if (v === null || typeof v !== "object" || Array.isArray(v)) throw Object.assign(new Error("데이터셋의 최상위는 { } 객체여야 합니다"), { line: 1, col: 1 });
+  return v;
+}
+function bindNow(){
+  const eng = engineId(), tpl = editor.get("tpl");
+  if (eng === "none") { bound = { html: tpl, ok: true, error: null, ms: 0 }; showBind(); return; }
+  const E = window.TemplateEngines && window.TemplateEngines[eng];
+  const t0 = performance.now();
+  try {
+    if (!E) throw Object.assign(new Error(eng + " 엔진을 불러오지 못했습니다"), { line: 1, col: 1 });
+    let data;
+    try { data = parseDataset(editor.get("data")); } catch (e) { e.where = "data"; throw e; }
+    const html = E.render(tpl, data, { autoEscape: $("#autoEsc").checked });
+    bound = { html, ok: true, error: null, ms: performance.now() - t0 };
+    editor.set(html, "out");
+  } catch (e) {
+    bound = { html: bound.html, ok: false, ms: 0,
+      error: { where: e.where || "tpl", message: String(e.message || e), line: e.line || 1, col: e.col || 1 } };
+  }
+  showBind();
+}
+let errMark = null;
+function showBind(){
+  const eng = engineId(), st = $("#bindStatus"), bar = $("#bindBar");
+  if (errMark) { errMark.clear(); errMark = null; }
+  if (eng === "none") { st.hidden = true; bar.hidden = true; return; }
+  st.hidden = false;
+  if (bound.ok) {
+    st.textContent = "바인딩 OK · " + Math.max(1, Math.round(bound.ms)) + "ms"; st.className = "chip ok"; bar.hidden = true;
+  } else {
+    const e = bound.error;
+    st.textContent = "바인딩 오류"; st.className = "chip bad";
+    $("#bindLoc").textContent = (e.where === "data" ? "데이터셋" : "템플릿") + " " + e.line + ":" + e.col;
+    $("#bindMsg").textContent = e.message; $("#bindMsg").title = e.message;
+    bar.hidden = false;
+    if (cm) {
+      const d = docs[e.where === "data" ? "data" : "tpl"];
+      const ln = Math.min(e.line - 1, d.lineCount() - 1);
+      const h = d.addLineClass(ln, "background", "cm-bind-err");
+      errMark = { clear: () => d.removeLineClass(h, "background", "cm-bind-err") };
+    }
+  }
+}
+$("#bindLoc").addEventListener("click", ev => { ev.preventDefault(); const e = bound.error; if (e) editor.goto(e.line, e.where === "data" ? "data" : "tpl", e.col); });
+const mailHTML = () => bound.html;
 
 /* ======================================================================
    Webmail 시뮬레이션 (각 클라이언트의 대표적인 필터링 규칙을 근사)
@@ -329,7 +501,7 @@ wmFrame.addEventListener("load", () => {
 });
 function renderWebmail(){
   const key = $("#wmClient").value, c = CLIENTS[key];
-  const { html, info } = sanitizeForWebmail(editor.get(), key);
+  const { html, info } = sanitizeForWebmail(mailHTML(), key);
   wmFrame.srcdoc = html;
   $("#clipNote").hidden = !info.clipped;
   $("#wmLabel").textContent = c.label;
@@ -357,7 +529,7 @@ async function renderOutlook(){
   const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
   try {
     const r = await fetch("/api/render/outlook", { method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ html: editor.get(), width: +$("#olWidth").value, scale, engine: $("#olEngine").value }) });
+      body: JSON.stringify({ html: mailHTML(), width: +$("#olWidth").value, scale, engine: $("#olEngine").value }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.statusText);
     if (my === ol.seq) {
@@ -485,7 +657,7 @@ const RULES = [
   ["outlook","warn",  /\bfloat\s*:\s*(left|right)/gi, "<em>float</em> 지원이 불안정 → table/td 의 align 속성을 사용하세요."],
   ["outlook","warn",  /border-radius\s*:/gi, "<em>border-radius</em> 무시 → Outlook 에서는 각진 모서리 (둥근 버튼은 VML 필요)."],
   ["outlook","warn",  /(box|text)-shadow\s*:/gi, "<em>box/text-shadow</em> 무시."],
-  ["outlook","warn",  /(max|min)-(width|height)\s*:/gi, "<em>max/min-width</em> 무시 → width 속성 또는 &lt;!--[if mso]&gt; 고정폭 테이블로 감싸세요."],
+  ["outlook","warn",  /(?<![(\w-])(max|min)-(width|height)\s*:/gi, "<em>max/min-width</em> 무시 → width 속성 또는 &lt;!--[if mso]&gt; 고정폭 테이블로 감싸세요."],
   ["outlook","warn",  /background(-image)?\s*:[^;"']*url\(/gi, "CSS <em>배경 이미지</em> 미지원 → VML(v:rect / v:fill) 또는 background 속성 사용."],
   ["outlook","warn",  /(linear|radial)-gradient\(/gi, "<em>gradient</em> 미지원 → 단색 폴백(background-color)을 지정하세요."],
   ["outlook","warn",  /\b(rgba|hsla?)\s*\(/gi, "<em>rgba/hsl</em> 색상 미지원 → #RRGGBB 를 사용하세요."],
@@ -509,22 +681,29 @@ const RULES = [
 let lintFilter = "all", lintItems = [];
 function lineOf(text, idx, starts){ let lo=0, hi=starts.length-1; while(lo<hi){ const m=(lo+hi+1)>>1; if(starts[m]<=idx) lo=m; else hi=m-1; } return lo+1; }
 function runLint(){
-  const text = editor.get();
+  const useOut = engineId() !== "none";
+  const text = useOut ? mailHTML() : editor.get("tpl");
+  const target = useOut ? "out" : "tpl";
   const starts = [0]; for (let i=0;i<text.length;i++) if (text.charCodeAt(i)===10) starts.push(i+1);
   // 조건부 주석(<!--[if mso]>...) 안은 Outlook 전용이므로 검사에서 제외
   const masked = text.replace(/<!--\[if[\s\S]*?<!\[endif\]-->/gi, m => m.replace(/[^\n]/g, " "));
   const items = [];
   for (const [who, sev, re, msg] of RULES) {
     re.lastIndex = 0; let m, n = 0;
-    while ((m = re.exec(masked)) && n < 50) { items.push({ who, sev, line: lineOf(text, m.index, starts), msg }); n++; if (m[0].length===0) re.lastIndex++; }
+    while ((m = re.exec(masked)) && n < 50) { items.push({ who, sev, line: lineOf(text, m.index, starts), msg, tab: target }); n++; if (m[0].length===0) re.lastIndex++; }
   }
   const total = bytes(text);
   if (total > 102*1024) items.push({ who:"webmail", sev:"error", line:1, msg:`메일 크기 ${(total/1024).toFixed(0)}KB → Gmail 은 <em>102KB</em> 초과 시 본문을 잘라냅니다.` });
   const styles = [...text.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)];
   styles.forEach(s => { if (bytes(s[1]) > 16384) items.push({ who:"webmail", sev:"error", line: lineOf(text, s.index, starts), msg:"<em>&lt;style&gt;</em> 블록이 16KB 초과 → Gmail 이 블록 전체를 제거합니다." }); });
   if (!/<!--\[if\s+mso/i.test(text) && /<table/i.test(text)) items.push({ who:"outlook", sev:"info", line:1, msg:"MSO 조건부 주석(<em>&lt;!--[if mso]&gt;</em>)이 없습니다. 고정폭 래퍼·폰트 지정에 활용하세요." });
+  items.forEach(it => { if (!it.tab) it.tab = target; });
   const order = { error:0, warn:1, info:2 };
   items.sort((a,b) => order[a.sev]-order[b.sev] || a.line-b.line);
+  if (useOut && !bound.ok) {
+    const e = bound.error;
+    items.unshift({ who: e.where === "data" ? "data" : "tpl", sev: "error", line: e.line, col: e.col, tab: e.where === "data" ? "data" : "tpl", msg: escapeHtml(e.message) });
+  }
   lintItems = items; drawLint();
 }
 function drawLint(){
@@ -536,8 +715,10 @@ function drawLint(){
   if (!shown.length) { list.innerHTML = '<div class="li"><span class="msg" style="color:#8c8">문제 없음</span></div>'; return; }
   for (const it of shown) {
     const d = document.createElement("div"); d.className = "li";
-    d.innerHTML = `<span class="sev ${it.sev}">${it.sev}</span><span class="ln">L${it.line}</span><span class="who">${it.who==="outlook"?"OL":"WM"}</span><span class="msg">${it.msg}</span>`;
-    d.onclick = () => editor.goto(it.line);
+    const who = { outlook: "OL", webmail: "WM", tpl: "FTL", data: "JSON" }[it.who] || it.who;
+    const tabHint = it.tab === "out" ? "결과 HTML 의 줄" : it.tab === "data" ? "데이터셋의 줄" : "템플릿의 줄";
+    d.innerHTML = `<span class="sev ${it.sev}">${it.sev}</span><span class="ln" title="${tabHint}">${it.tab === "out" ? "R" : it.tab === "data" ? "D" : "L"}${it.line}</span><span class="who">${who}</span><span class="msg">${it.msg}</span>`;
+    d.onclick = () => editor.goto(it.line, it.tab || "tpl", it.col);
     list.appendChild(d);
   }
 }
@@ -558,57 +739,138 @@ function subjectOf(html){
 const renderWebmailDeb = debounce(renderWebmail, 250);
 const renderOutlookDeb = debounce(() => { if ($("#autoRender").checked) renderOutlook(); }, 1200);
 const lintDeb = debounce(runLint, 400);
-const saveDraft = debounce(() => store.set("draft", editor.get()), 600);
+const saveDraft = debounce(() => { store.set("draft", editor.get("tpl")); store.set("draftData", editor.get("data")); }, 600);
+function updateSize(){
+  const t = activeTab === "tpl" && engineId() === "none" ? mailHTML() : editor.get(activeTab);
+  $("#sizeInfo").textContent = (bytes(t)/1024).toFixed(1) + " KB" + (engineId() !== "none" && activeTab !== "out" ? " · 결과 " + (bytes(mailHTML())/1024).toFixed(1) + " KB" : "");
+}
+let bindTimer = 0;
 function onChange(){
-  const html = editor.get();
-  $("#sizeInfo").textContent = (bytes(html)/1024).toFixed(1) + " KB";
+  // 입력 중에는 바인딩을 아주 짧게 지연 (연속 입력 시 매 글자마다 실행하지 않도록)
+  clearTimeout(bindTimer);
+  bindTimer = setTimeout(refreshAll, engineId() === "none" ? 0 : 120);
+  saveDraft();
+}
+function refreshAll(){
+  bindNow();
+  const html = mailHTML();
+  updateSize();
   const subj = subjectOf(html);
   $("#olSubject").textContent = subj;
   if (document.activeElement !== $("#wmSubject")) $("#wmSubject").textContent = subj;
-  renderWebmailDeb(); lintDeb(); saveDraft();
-  if (ol.available) renderOutlookDeb();
+  renderWebmailDeb(); lintDeb();
+  if (ol.available && bound.ok) renderOutlookDeb();
 }
 $("#wmSubject").addEventListener("input", e => { e.target.dataset.custom = e.target.textContent.trim(); $("#olSubject").textContent = e.target.textContent; });
 
 /* ======================================================================
    파일 열기/저장 (File System Access API 지원 시 원본 파일에 바로 저장)
    ====================================================================== */
-let fileHandle = null, fileName = store.get("fileName", "untitled.html");
-$("#fileName").textContent = fileName;
-function setFileName(n){ fileName = n; $("#fileName").textContent = n; store.set("fileName", n); }
+const files = { tpl: { handle: null, name: store.get("fileName", "untitled.html") }, data: { handle: null, name: store.get("dataFileName", "dataset.json") } };
+function updateFileName(){
+  const f = activeTab === "data" ? files.data : files.tpl;
+  $("#fileName").textContent = activeTab === "out" ? files.tpl.name.replace(/\.(ftlh?|html?)$/i, "") + ".rendered.html" : f.name;
+}
+function setFileName(tab, n){ files[tab].name = n; store.set(tab === "data" ? "dataFileName" : "fileName", n); updateFileName(); }
 async function decodeFile(buf){
   try { return new TextDecoder("utf-8", { fatal:true }).decode(buf); }
   catch(e) { try { return new TextDecoder("euc-kr").decode(buf); } catch(e2) { return new TextDecoder().decode(buf); } }
 }
+// 확장자로 넣을 곳 결정: .json -> 데이터셋, 그 외 -> 템플릿 (.ftl/.ftlh 이면 FreeMarker 로 전환)
+async function loadFile(f, handle){
+  const text = await decodeFile(await f.arrayBuffer());
+  if (/\.json$/i.test(f.name)) {
+    if (engineId() === "none") setEngine("freemarker");
+    files.data.handle = handle || null; setFileName("data", f.name);
+    editor.set(text, "data"); switchTab("data");
+  } else {
+    if (/\.ftlh?$/i.test(f.name)) { setEngine("freemarker"); if (/\.ftlh$/i.test(f.name)) { $("#autoEsc").checked = true; store.set("opt#autoEsc", true); } }
+    files.tpl.handle = handle || null; setFileName("tpl", f.name);
+    editor.set(text, "tpl"); switchTab("tpl");
+  }
+  toast(f.name + " 열림");
+}
+const OPEN_TYPES = [
+  { description: "HTML / FreeMarker 템플릿", accept: { "text/html": [".html", ".htm", ".ftl", ".ftlh"] } },
+  { description: "데이터셋 (JSON)", accept: { "application/json": [".json"] } },
+];
 async function openFile(){
   if (window.showOpenFilePicker) {
     try {
-      const [h] = await showOpenFilePicker({ types:[{ description:"HTML", accept:{ "text/html":[".html",".htm"] } }] });
-      const f = await h.getFile(); fileHandle = h; setFileName(f.name);
-      editor.set(await decodeFile(await f.arrayBuffer())); toast(f.name + " 열림");
+      const types = activeTab === "data" ? [OPEN_TYPES[1], OPEN_TYPES[0]] : OPEN_TYPES;
+      const [h] = await showOpenFilePicker({ types });
+      await loadFile(await h.getFile(), h);
     } catch(e) { if (e.name !== "AbortError") toast("열기 실패: " + e.message); }
   } else $("#fileInput").click();
 }
+$("#fileInput").setAttribute("accept", ".html,.htm,.ftl,.ftlh,.json,text/html,application/json");
 $("#fileInput").addEventListener("change", async e => {
-  const f = e.target.files[0]; if (!f) return; fileHandle = null; setFileName(f.name);
-  editor.set(await decodeFile(await f.arrayBuffer())); e.target.value = ""; toast(f.name + " 열림");
+  const f = e.target.files[0]; if (!f) return; await loadFile(f, null); e.target.value = "";
 });
 async function saveFile(){
-  const data = editor.get();
+  const tab = activeTab;
+  const text = tab === "out" ? mailHTML() : editor.get(tab);
+  const isData = tab === "data";
+  const f = tab === "out" ? { handle: null, name: $("#fileName").textContent } : files[tab];
+  const type = isData ? { description: "JSON", accept: { "application/json": [".json"] } } : { description: "HTML", accept: { "text/html": [".html", ".ftl", ".ftlh"] } };
   try {
-    if (!fileHandle && window.showSaveFilePicker) {
-      fileHandle = await showSaveFilePicker({ suggestedName: fileName, types:[{ description:"HTML", accept:{ "text/html":[".html"] } }] });
-      setFileName(fileHandle.name);
+    if (!f.handle && window.showSaveFilePicker) {
+      const h = await showSaveFilePicker({ suggestedName: f.name, types: [type] });
+      if (tab !== "out") { f.handle = h; setFileName(tab, h.name); } else f.handle = h;
     }
-    if (fileHandle) { const w = await fileHandle.createWritable(); await w.write(data); await w.close(); toast(fileName + " 저장됨"); return; }
+    if (f.handle) { const w = await f.handle.createWritable(); await w.write(text); await w.close(); toast(f.handle.name + " 저장됨"); return; }
   } catch(e) { if (e.name === "AbortError") return; }
-  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], { type:"text/html" })); a.download = fileName; a.click();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: isData ? "application/json" : "text/html" })); a.download = f.name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000); toast("다운로드로 저장됨");
 }
-async function loadSample(){ try { const t = await (await fetch("sample.html")).text(); fileHandle=null; setFileName("sample.html"); editor.set(t); } catch(e) { toast("샘플을 불러올 수 없습니다"); } }
+const SAMPLES = {
+  newsletter: { engine: "none", tpl: "sample.html", name: "sample.html" },
+  system:     { engine: "freemarker", tpl: "samples/system-notice.ftl", data: "samples/system-notice.json", name: "system-notice.ftl", dataName: "system-notice.json" },
+};
+async function loadSample(key){
+  const sm = SAMPLES[key];
+  try {
+    const tpl = await (await fetch(sm.tpl)).text();
+    const data = sm.data ? await (await fetch(sm.data)).text() : null;
+    setEngine(sm.engine);
+    files.tpl.handle = null; setFileName("tpl", sm.name);
+    if (data !== null) { files.data.handle = null; setFileName("data", sm.dataName); editor.set(data, "data"); }
+    editor.set(tpl, "tpl"); switchTab("tpl");
+  } catch(e) { toast("샘플을 불러올 수 없습니다"); }
+}
 $("#bOpen").onclick = openFile; $("#bSave").onclick = saveFile;
-$("#bSample").onclick = () => { if (editor.get().trim() && !confirmReplace()) return; loadSample(); };
-function confirmReplace(){ return window.confirm("현재 내용을 샘플로 바꿀까요?"); }
+$("#sampleSel").onchange = e => {
+  const k = e.target.value; e.target.value = "";
+  if (!k) return;
+  if (editor.get("tpl").trim() && !window.confirm("현재 템플릿" + (SAMPLES[k].data ? "과 데이터셋" : "") + "을 샘플로 바꿀까요?")) return;
+  loadSample(k);
+};
+
+// 템플릿 엔진 선택
+function setEngine(id){
+  $("#tplEngine").value = id; store.set("engine", id);
+  document.body.classList.toggle("eng-none", id === "none");
+  $("#tabTpl").textContent = id === "none" ? "HTML" : "템플릿 (" + (id === "freemarker" ? "FTL" : id) + ")";
+  if (id === "none" && activeTab !== "tpl") switchTab("tpl"); else switchTab(activeTab);
+  onChange();
+}
+$("#tplEngine").addEventListener("change", e => setEngine(e.target.value));
+$("#autoEsc").addEventListener("change", () => { store.set("opt#autoEsc", $("#autoEsc").checked); onChange(); });
+$("#autoEsc").checked = store.get("opt#autoEsc", false);
+
+// 템플릿에서 쓰는 최상위 변수 중 데이터셋에 없는 것을 빈 값으로 추가
+$("#bFillData").onclick = () => {
+  const E = window.TemplateEngines && window.TemplateEngines[engineId()];
+  if (!E || !E.referencedNames) return;
+  let data;
+  try { data = parseDataset(editor.get("data")); } catch(e) { toast("먼저 데이터셋의 JSON 오류를 고쳐 주세요"); return; }
+  const names = E.referencedNames(editor.get("tpl")).filter(n => !(n in data));
+  if (!names.length) { toast("추가할 변수가 없습니다"); return; }
+  names.forEach(n => data[n] = "");
+  editor.set(JSON.stringify(data, null, 2), "data");
+  toast(names.length + "개 변수 추가: " + names.join(", "), 3500);
+};
+
 document.addEventListener("keydown", e => {
   if (e.ctrlKey && e.key.toLowerCase() === "s") { e.preventDefault(); saveFile(); }
   else if (e.ctrlKey && e.key.toLowerCase() === "o") { e.preventDefault(); openFile(); }
@@ -623,14 +885,14 @@ async function post(url, body){
   const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j;
 }
 $("#bOutlook").onclick = async () => {
-  try { await post("/api/outlook/open", { html: editor.get(), subject: subjectOf(editor.get()) }); toast("Outlook 새 메일 창을 열었습니다"); }
+  try { await post("/api/outlook/open", { html: mailHTML(), subject: subjectOf(mailHTML()) }); toast("Outlook 새 메일 창을 열었습니다"); }
   catch(e) { toast("실패: " + e.message, 4000); }
 };
-$("#bSend").onclick = () => { $("#sendTo").value = store.get("sendTo", ""); $("#sendSubject").value = "[테스트] " + subjectOf(editor.get()); $("#sendDlg").showModal(); };
+$("#bSend").onclick = () => { $("#sendTo").value = store.get("sendTo", ""); $("#sendSubject").value = "[테스트] " + subjectOf(mailHTML()); $("#sendDlg").showModal(); };
 $("#sendDlg").addEventListener("close", async () => {
   if ($("#sendDlg").returnValue !== "ok") return;
   const to = $("#sendTo").value.trim(); store.set("sendTo", to);
-  try { await post("/api/outlook/send", { html: editor.get(), subject: $("#sendSubject").value, to }); toast("발송했습니다 → " + to, 3500); }
+  try { await post("/api/outlook/send", { html: mailHTML(), subject: $("#sendSubject").value, to }); toast("발송했습니다 → " + to, 3500); }
   catch(e) { toast("발송 실패: " + e.message, 4000); }
 });
 
@@ -689,7 +951,15 @@ document.querySelectorAll(".split").forEach(sp => {
 (async function init(){
   olMessage("");
   const draft = store.get("draft", "");
-  if (draft) editor.set(draft); else await loadSample();
+  const draftData = store.get("draftData", "");
+  if (draft) {
+    if (draftData) editor.set(draftData, "data");
+    editor.set(draft, "tpl");
+    const savedTab = store.get("tab", "tpl");
+    setEngine(store.get("engine", "none"));
+    switchTab(savedTab);
+  } else await loadSample("newsletter");
+  clearTimeout(bindTimer); refreshAll();
   runLint(); renderWebmail();
   await checkStatus();
 })();

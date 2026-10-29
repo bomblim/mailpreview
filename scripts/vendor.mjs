@@ -16,6 +16,7 @@ const bundle = [
   "lib/codemirror.js", "mode/xml/xml.js", "mode/css/css.js", "mode/javascript/javascript.js",
   "mode/htmlmixed/htmlmixed.js", "addon/edit/closetag.js", "addon/fold/xml-fold.js",
   "addon/edit/matchtags.js", "addon/search/searchcursor.js", "addon/search/search.js", "addon/dialog/dialog.js",
+  "addon/mode/overlay.js",
 ].map(cm).join("\n");
 fs.writeFileSync(out("codemirror", "codemirror-bundle.js"), bundle);
 for (const [src, dst] of [["lib/codemirror.css", "codemirror.css"], ["theme/material-darker.css", "material-darker.css"],
